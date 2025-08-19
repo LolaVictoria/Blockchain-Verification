@@ -41,12 +41,12 @@ const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenera
 
   try {
     // Assuming your backend REST route is something like: POST /apikeys
-    const response = await apiClient.request("/developer/apikeys", "POST", { label });
+    const response = await apiClient.request("/developer/create-apikey", "POST", { label });
 
     
 
       if (response.data.createApiKey.success) {
-        setNewKey(response.data.createApiKey.apiKey.key);
+        setNewKey(response.data.data.api_key);
         setLabel('');
        onKeyGenerated();
       }

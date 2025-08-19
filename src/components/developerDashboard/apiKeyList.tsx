@@ -2,16 +2,18 @@ import { useState, useEffect } from "react";
 import apiClient from "../../utils/apiClient";
 import type { ApiKey } from "../../../types";
 import { Key } from "lucide-react";
+import ApiKeysTable from "./apiKeyTable";
 
 const ApiKeyList: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
 
+
   useEffect(() => {
     const fetchApiKeys = async () => {
   try {
-    const response = await apiClient.request("/developers/apikeys", "GET");
-    setApiKeys(response.data);
+    const response = await apiClient.request("/developer/my-apikeys", "GET");
+    setApiKeys(response.data.api_keys || []);
   } catch (error) {
     console.error("Error fetching API keys:", error);
   } finally {
@@ -44,42 +46,10 @@ const ApiKeyList: React.FC = () => {
         API Keys
       </h2>
       
-      {apiKeys.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Key size={48} className="mx-auto mb-4 text-gray-300" />
-          <p>No API keys generated yet</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {apiKeys.map((apiKey) => (
-            <div key={apiKey._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900">{apiKey.label}</h3>
-                <span className="text-sm text-gray-500">
-                  {apiKey.usage_count} requests
-                </span>
-              </div>
-              
-              <div className="mb-3">
-                <code className="block p-2 bg-gray-50 border rounded text-sm font-mono">
-                  {apiKey.masked_key}
-                </code>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
-                <div>
-                  <span className="font-medium">Created:</span>{' '}
-                  {new Date(apiKey.created_at).toLocaleDateString()}
-                </div>
-                <div>
-                  <span className="font-medium">Last Used:</span>{' '}
-                  {apiKey.last_used ? new Date(apiKey.last_used).toLocaleDateString() : 'Never'}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      
+        <ApiKeysTable apiKeys={apiKeys} />
+          
+      
     </div>
   );
 };

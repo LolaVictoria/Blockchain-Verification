@@ -7,9 +7,10 @@ const ApiDocumentation: React.FC = () => {
   const endpoints = {
     verify: {
       method: 'POST',
-      path: '/api/verify',
-      description: 'Verify a product by serial number',
+      path: 'https://product-verification-blockchain.onrender.com/verification/verify-one/<serial_number>',
+      description: 'Verify a single product',
       example: {
+        "Authorization": "Bearer YOUR_API_KEY",      
         request: {
           serial_number: 'SN001'
         },
@@ -25,24 +26,104 @@ const ApiDocumentation: React.FC = () => {
         }
       }
     },
+    bulk_verify: {
+      method: 'POST',
+      path: 'https://product-verification-blockchain.onrender.com/verification/verify-bulk',
+      description: 'Verify multiple products in a single request and receive a summary of which products are verified or not.',
+      example: {
+        request: {
+          serial_numbers: ['SN001', 'SN002', 'SN003']
+        },
+        response: [
+          {
+            "serial_number": "SN001",
+            "verified": true,
+            "product": {
+              "product_name": "Premium Widget",
+              "category": "Electronics",
+              "manufacturer_address": "0x1234567890abcdef1234567890abcdef12345678",
+              "registered_at": "2024-01-15T10:30:00Z",
+              "description": "High-quality electronic widget for smart homes."
+            }
+          },
+          {
+            "serial_number": "SN002",
+            "verified": false,
+            "error": "Product not found"
+          },
+          {
+            "serial_number": "SN003",
+            "verified": true,
+            "product": {
+              "product_name": "Eco Bottle",
+              "category": "Household",
+              "manufacturer_address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+              "registered_at": "2024-03-22T14:45:00Z",
+              "description": "Reusable eco-friendly water bottle."
+            }
+          }
+        ],
+        "total_checked": 3,
+        "verified_count": 2,
+        "success_rate": "66.7%"
+      }
+              },
+     
     batch_verify: {
       method: 'POST',
-      path: '/api/verify/batch',
-      description: 'Verify multiple products at once',
+      path: 'https://product-verification-blockchain.onrender.com/verification/verify-batch',
+      description: 'Verify multiple products at once and receive detailed results, including verification status, product information, and optional timing/performance metrics for each verification.',
       example: {
         request: {
           serial_numbers: ['SN001', 'SN002', 'SN003']
         },
         response: {
-          results: [
-            { serial_number: 'SN001', verified: true },
-            { serial_number: 'SN002', verified: false },
-            { serial_number: 'SN003', verified: true }
-          ]
-        }
-      }
-    }
-  };
+            results: [
+              {
+                "serial_number": "SN001",
+                "verified": true,
+                "product": {
+                  "product_name": "Premium Widget",
+                  "category": "Electronics",
+                  "manufacturer_address": "0x1234567890abcdef1234567890abcdef12345678",
+                  "registered_at": "2024-01-15T10:30:00Z",
+                  "description": "High-quality electronic widget for smart homes."
+                },
+                "verification_time_ms": 12.34,
+                "database_time_ms": 5.67
+              },
+              {
+                "serial_number": "SN002",
+                "verified": false,
+                "error": "Product not found"
+              },
+              {
+                "serial_number": "SN003",
+                "verified": true,
+                "product": {
+                  "product_name": "Eco Bottle",
+                  "category": "Household",
+                  "manufacturer_address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+                  "registered_at": "2024-03-22T14:45:00Z",
+                  "description": "Reusable eco-friendly water bottle."
+                },
+                "verification_time_ms": 10.12,
+                "database_time_ms": 4.56
+              }
+            ],
+          "total_checked": 3,
+          "verified_count": 2,
+          "success_rate": "66.7%",
+          "timing": {
+            "total_time_ms": 50.12,
+            "blockchain_time_ms": 22.46,
+            "database_time_ms": 10.23,
+            "average_per_product_ms": 16.71          
+          }
+  }
+}
+  }
+}
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -77,10 +158,10 @@ const ApiDocumentation: React.FC = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-3">Base URL</h3>
         <div className="relative">
           <pre className="bg-gray-50 border rounded-lg p-4 text-sm">
-            <code>https://api.productverify.com</code>
+            <code>https://product-verification-blockchain.onrender.com</code>
           </pre>
           <button
-            onClick={() => copyCode('https://api.productverify.com')}
+            onClick={() => copyCode('https://product-verification-blockchain.onrender.com')}
             className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
           >
             <Copy size={16} />
@@ -102,7 +183,7 @@ const ApiDocumentation: React.FC = () => {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {endpoint.method} {endpoint.path}
+                 {endpoint.description}
               </button>
             ))}
           </div>
@@ -118,7 +199,18 @@ const ApiDocumentation: React.FC = () => {
                     }`}>
                       {endpoint.method}
                     </span>
-                    <span className="ml-2 font-mono text-sm">{endpoint.path}</span>
+                    <div className="relative">
+                        <pre className="bg-gray-50 border rounded-lg px-1 py-4 text-sm w-auto">
+                          {/* <code>{JSON.stringify(endpoint.example.request, null, 2)}</code> */}
+                           <span className="ml-2 font-mono text-sm">{endpoint.path}</span>
+                        </pre>
+                        <button
+                          onClick={() => copyCode(JSON.stringify(endpoint.example.request, null, 2))}
+                          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                        >
+                          <Copy size={16} />
+                        </button>
+                      </div>
                   </div>
                   
                   <p className="text-gray-600 mb-6">{endpoint.description}</p>

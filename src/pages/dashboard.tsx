@@ -7,6 +7,7 @@ import DeveloperDashboard from "./developerDashboard";
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,6 +1,7 @@
 // Types
 export interface User {
   id: string;
+  user_name: string
   email: string;
   role: 'manufacturer' | 'developer';
   wallet_address?: string;
@@ -32,7 +33,7 @@ export interface ApiKey {
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  signup: (email: string, password: string, role: string, walletAddress?: string) => Promise<boolean>;
+  signup: (user_name: string, email: string, password: string, role: string, walletAddress?: string) => Promise<boolean>;
   logout: () => void;
   loading: boolean;
 }
