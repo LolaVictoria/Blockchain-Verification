@@ -1,0 +1,224 @@
+the chapter 1,2, 3 document is my project  and now i need chapter 4. THe first doc ch 1, 2, 3 is my project. the 2nd doc is the format i want to follow to write my own chapter 4 for my project. ps: the h 44 is not my project, i just want to folow theoutline i've added new features like admin dashboard ( this is wwhere the list of mnaufacturers that createss an account is displayed along side their blockchain wallet adress, the admin goes through the list and  verifies the wallet address and either accept it orr revokes it. the verification status is tehrefore sent to the dashboard of the manufacturer. if the admin is yet to perform any action, the verification status shows pending)
+
+
+
+## **1. High-Level Architecture**
+
+**Actors:**
+
+* **Manufacturer** — Registers products on blockchain + backend.
+* **Developer** — Gets API keys to integrate verification into their own e-commerce platform.
+* **End User (Customer)** — Verifies product authenticity on e-commerce site or extension.
+
+**Main Components:**
+
+1. **Blockchain Smart Contract** (immutable record of product authenticity)
+2. **Backend API** (Flask + MongoDB)
+3. **Extension Frontend** (role-based dashboard)
+4. **E-commerce Integration** (via developer API keys)
+
+---
+
+## **2. Blockchain Layer (Smart Contract)**
+
+### **Purpose**
+
+* Store immutable product data: Serial number, Manufacturer ID, Registration Timestamp, Status.
+
+### **Data stored in smart contract**
+
+```solidity
+struct Product {
+    string serialNumber;
+    address manufacturer;
+    uint256 timestamp;
+    bool verified;
+}
+```
+
+* **registerProduct** → Called by Manufacturer’s wallet when adding a new product.
+* **verifyProduct** → Public function to check if a serial number exists & is verified.
+
+---
+
+## **3. Backend Layer (Flask + MongoDB)**
+
+### **Database Collections**
+
+```plaintext
+users:
+  _id, email, password_hash, role (manufacturer|developer), created_at
+
+products:
+  _id, serial_number, name, manufacturer_id, blockchain_tx_hash, registered_at, verified (bool)
+
+apikeys:
+  _id, user_id, key, label, created_at, revoked
+
+api_usage:
+  _id, api_key_id, user_id, endpoint, ip, timestamp
+```
+
+---
+
+### **API Routes**
+
+#### **Authentication (both roles)**
+
+| Method | Endpoint        | Role | Description                |
+| ------ | --------------- | ---- | -------------------------- |
+| POST   | `/auth/signup`  | all  | Create account             |
+| POST   | `/auth/login`   | all  | Login, get JWT token       |
+| GET    | `/auth/profile` | all  | Get profile (JWT required) |
+
+---
+
+#### **Manufacturer API**
+
+| Method | Endpoint                         | Auth             | Description                                                           |
+| ------ | -------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| POST   | `/manufacturer/register-product` | Manufacturer JWT | Calls blockchain to register product, then stores metadata in MongoDB |
+| GET    | `/manufacturer/my-products`      | Manufacturer JWT | Lists products registered by manufacturer                             |
+
+---
+
+#### **Developer API**
+
+| Method | Endpoint                   | Auth          | Description                |
+| ------ | -------------------------- | ------------- | -------------------------- |
+| POST   | `/developer/create-apikey` | Developer JWT | Generates a unique API key |
+| GET    | `/developer/my-apikeys`    | Developer JWT | Lists developer’s API keys |
+
+---
+
+#### **Public Verification API**
+
+| Method | Endpoint                 | Auth    | Description                                        |
+| ------ | ------------------------ | ------- | -------------------------------------------------- |
+| GET    | `/verify/:serial_number` | API Key | Verifies if product exists on blockchain and in DB |
+| POST   | `/verify-bulk`           | API Key | Bulk verification for multiple products            |
+
+---
+
+### **Authentication**
+
+* **JWT** for manufacturers and developers in the dashboard.
+* **API Keys** for developers integrating into e-commerce.
+* Role is stored in JWT payload:
+
+```json
+{
+  "sub": "user_id",
+  "role": "manufacturer"
+}
+```
+
+---
+
+## **4. Frontend (Extension Dashboard)**
+
+### **Login Screen**
+
+* User selects role **(Manufacturer / Developer)**
+* Authenticates with backend (`/auth/login`).
+
+---
+
+### **Manufacturer Dashboard**
+
+* **Register Product Form** → Calls `/manufacturer/register-product` → Backend writes to blockchain + MongoDB.
+* **List Products** → Displays registered products with blockchain status.
+
+---
+
+### **Developer Dashboard**
+
+* **Generate API Keys** → Calls `/developer/create-apikey`.
+* **API Documentation Page** → Shows endpoints for integrating verification.
+
+---
+
+## **5. E-Commerce Platform Integration (Developer)**
+
+### **How integration works:**
+
+1. **Developer generates API key** from dashboard.
+2. In e-commerce product page:
+
+   * Add a "Verify Authenticity" button.
+   * When clicked, frontend sends product serial number to `/verify/:serial_number` with the API key in header:
+
+     ```http
+     GET /verify/ABC123
+     x-api-key: developer_generated_key
+     ```
+3. Backend checks:
+
+   * If product exists in MongoDB.
+   * If blockchain record matches.
+4. Returns:
+
+```json
+{
+  "verified": true,
+  "product": {
+    "serial_number": "ABC123",
+    "manufacturer": "XYZ Corp",
+    "registered_at": "2025-08-11T14:32:00Z"
+  }
+}
+```
+
+5. If **verified**: Show ✅ tag "Authentic".
+6. If **not verified**: Show ❌ tag "Unverified".
+
+---
+
+## **6. Example Flow**
+
+**Manufacturer Flow:**
+
+1. Manufacturer logs into extension dashboard.
+2. Goes to "Register Product".
+3. Submits product details → Backend → Blockchain transaction + DB insert.
+4. Product is now publicly verifiable.
+
+**Developer Flow:**
+
+1. Developer logs into dashboard.
+2. Generates API key.
+3. Integrates `/verify` endpoint into their e-commerce store.
+4. Adds "Verify" button in product pages.
+5. Customer clicks → API verifies authenticity → UI updates.
+
+**Customer Flow on E-Commerce:**
+
+1. Customer sees a product with "Authenticity: ✅ Verified".
+2. Or clicks "Verify" button → Calls backend API → Shows authenticity result in real time.
+
+---
+
+If you want, I can **draw a neat architecture diagram** showing the blockchain, backend, frontend, and integration flows visually so it’s easier to present or follow.
+Do you want me to prepare that?
+
+ const fetchCurrentUser = async (): Promise<User | null> => {
+  setLoading(true);
+  try {
+    const response = await apiClient.request("/auth/profile", "GET", null, {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    });
+
+    if (response.status === 200 && response.data) {
+      setUser(response.data.user); // assuming AuthService returns { user: {...} }
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      return response.data.user;
+    }
+    return null;
+  } catch (error) {
+    console.error("Fetch current user error:", error);
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
+

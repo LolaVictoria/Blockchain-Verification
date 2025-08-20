@@ -13,7 +13,7 @@ import type { ApiKey } from '../../../types';
 
 //   const copyToClipboard = async () => {
 //     try {
-//       await navigator.clipboard.writeText(apiKey.full_key || apiKey.masked_key);
+//       await navigator.clipboard.writeText(apiKey.full_key || apiKey.key);
 //       setCopied(true);
 //       setTimeout(() => setCopied(false), 2000);
 //     } catch (err) {
@@ -21,7 +21,7 @@ import type { ApiKey } from '../../../types';
 //     }
 //   };
 
-//   const displayValue = showKey ? (apiKey.full_key || apiKey.masked_key) : '•'.repeat(12);
+//   const displayValue = showKey ? (apiKey.full_key || apiKey.key) : '•'.repeat(12);
 
 //   return (
 //     <div className="mb-3">
@@ -72,7 +72,7 @@ const InlineApiKeyDisplay: React.FC<{ apiKey: ApiKey }> = ({ apiKey }) => {
 
   const copyToClipboard = async (): Promise<void> => {
     try {
-      await navigator.clipboard.writeText(apiKey.full_key || apiKey.masked_key);
+      await navigator.clipboard.writeText(apiKey.key);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -80,11 +80,11 @@ const InlineApiKeyDisplay: React.FC<{ apiKey: ApiKey }> = ({ apiKey }) => {
     }
   };
 
-  const displayValue: string = showKey ? (apiKey.full_key || apiKey.masked_key) : '•'.repeat(32);
+  const displayValue: string = showKey ? (apiKey.key) : '•'.repeat(32);
 
   return (
     <div className="flex items-center space-x-2 min-w-0">
-      <code className="flex-1 p-2 bg-gray-50 border rounded text-xs font-mono truncate">
+      <code className="flex-1 p-2 bg-gray-50 border rounded text-black text-xs font-mono truncate">
         {displayValue}
       </code>
       <div className="flex items-center space-x-1 flex-shrink-0">

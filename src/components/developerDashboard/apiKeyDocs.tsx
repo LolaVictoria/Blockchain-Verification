@@ -8,6 +8,7 @@ const ApiDocumentation: React.FC = () => {
     verify: {
       method: 'POST',
       path: 'https://product-verification-blockchain.onrender.com/verification/verify-one/<serial_number>',
+      title: 'Single Product Verification',
       description: 'Verify a single product',
       example: {
         "Authorization": "Bearer YOUR_API_KEY",      
@@ -29,6 +30,7 @@ const ApiDocumentation: React.FC = () => {
     bulk_verify: {
       method: 'POST',
       path: 'https://product-verification-blockchain.onrender.com/verification/verify-bulk',
+      title: 'Bulk Product Verification',
       description: 'Verify multiple products in a single request and receive a summary of which products are verified or not.',
       example: {
         request: {
@@ -72,6 +74,7 @@ const ApiDocumentation: React.FC = () => {
     batch_verify: {
       method: 'POST',
       path: 'https://product-verification-blockchain.onrender.com/verification/verify-batch',
+      title: 'Batch Product Verification',
       description: 'Verify multiple products at once and receive detailed results, including verification status, product information, and optional timing/performance metrics for each verification.',
       example: {
         request: {
@@ -183,7 +186,7 @@ const ApiDocumentation: React.FC = () => {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                 {endpoint.description}
+                 {endpoint.title}
               </button>
             ))}
           </div>
@@ -193,16 +196,16 @@ const ApiDocumentation: React.FC = () => {
               const endpoint = endpoints[selectedEndpoint as keyof typeof endpoints];
               return (
                 <div>
-                  <div className="mb-4">
-                    <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                  <div className="mb-4 ">
+                    <span className={`inline-block mr-4 px-4 py-4 text-xs font-medium rounded ${
                       endpoint.method === 'POST' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                     }`}>
                       {endpoint.method}
                     </span>
-                    <div className="relative">
-                        <pre className="bg-gray-50 border rounded-lg px-1 py-4 text-sm w-auto">
+                    <div className="relative inline-block ">
+                        <pre className="bg-gray-50 border rounded-lg px-1 py-4 text-sm">
                           {/* <code>{JSON.stringify(endpoint.example.request, null, 2)}</code> */}
-                           <span className="ml-2 font-mono text-sm">{endpoint.path}</span>
+                           <code className="pr-4 ml-2 font-mono text-sm">{JSON.stringify(endpoint.path, null, 2)}</code>
                         </pre>
                         <button
                           onClick={() => copyCode(JSON.stringify(endpoint.example.request, null, 2))}

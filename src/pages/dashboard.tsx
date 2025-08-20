@@ -1,13 +1,26 @@
 // Main Dashboard Component
 import { useAuth } from "../hooks/useAuth";
-import { Shield } from "lucide-react";
-import { LogOut } from "lucide-react";
+import { Shield, LogOut } from "lucide-react";
 import ManufacturerDashboard from "./ManufacturerDashboard";
 import DeveloperDashboard from "./developerDashboard";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
-  const { user, logout } = useAuth();
-  
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const { user, logout, fetchCurrentUser } = useAuth(); 
+  const { role, id } = useParams<{ role: string; id: string }>();
+
+  useEffect(() => {
+    if (user) {
+      // context already has user
+      setUserRole(user.role);
+    } else if (role && id) {
+      // fallback: fetch user using params on reload
+      fetchCurrentUser(id);
+      setUserRole(role);
+    }
+  }, [user, role, id, fetchCurrentUser]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -18,11 +31,25 @@ const Dashboard: React.FC = () => {
               <Shield className="w-8 h-8 text-indigo-600 mr-3" />
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Product Verification</h1>
-                <p className="text-sm text-gray-500 capitalize">{user?.role} Dashboard</p>
+                <p className="text-sm text-gray-500 capitalize">{userRole} Dashboard</p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
+              {userRole === "manufacturer" && user?.wallet_verification_status && (
+                <div className="flex flex-col gap-y-1 justify-center">
+                  <p className="text-lg font-medium">Wallet Status</p>
+                  <div
+                    className={`px-2 py-1 text-xs font-medium rounded ${
+                      user?.wallet_verification_status === "verified"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    <p>{user.wallet_verification_status}</p>
+                  </div>
+                </div>
+              )}
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">{user?.email}</p>
                 {user?.wallet_address && (
@@ -44,9 +71,10 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {user?.role === 'manufacturer' ? <ManufacturerDashboard /> : <DeveloperDashboard />}
+        {userRole === "manufacturer" ? <ManufacturerDashboard /> : <DeveloperDashboard />}
       </main>
     </div>
   );
 };
-export default Dashboard
+
+export default Dashboard;

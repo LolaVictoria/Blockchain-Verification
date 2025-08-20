@@ -8,20 +8,19 @@ const ApiKeyList: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
 
-
   useEffect(() => {
     const fetchApiKeys = async () => {
-  try {
-    const response = await apiClient.request("/developer/my-apikeys", "GET");
-    setApiKeys(response.data.api_keys || []);
-  } catch (error) {
-    console.error("Error fetching API keys:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+      setLoading(true);
+        try {
+        // In your API call
+          const response = await apiClient.request("/developer/my-apikeys?show_full_key=true", "GET");
+          setApiKeys(response.data.data.api_keys || []);
+        } catch (error) {
+          console.error("Error fetching API keys:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
     fetchApiKeys();
   }, []);
 

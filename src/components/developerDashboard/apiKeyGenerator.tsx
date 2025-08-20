@@ -1,64 +1,74 @@
 import { useState } from "react";
-import { Plus, Copy } from "lucide-react";
+import { Plus, Copy, CheckCircle, XCircle } from "lucide-react";
 import apiClient from "../../utils/apiClient";
+
 const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenerated }) => {
   const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(false);
   const [newKey, setNewKey] = useState('');
-
-  // const handleGenerate = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-    
-  //   try {
-  //     const response = await graphqlClient.query(`
-  //       mutation CreateApiKey($label: String!) {
-  //         createApiKey(label: $label) {
-  //           success
-  //           apiKey {
-  //             key
-  //             masked_key
-  //           }
-  //         }
-  //       }
-  //     `, { label });
-      
-  //     if (response.data.createApiKey.success) {
-  //       setNewKey(response.data.createApiKey.apiKey.key);
-  //       setLabel('');
-  //       onKeyGenerated();
-  //     }
-  //   } catch (error) {
-  //     console.error('Error generating API key:', error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleGenerate = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-
-  try {
-    // Assuming your backend REST route is something like: POST /apikeys
-    const response = await apiClient.request("/developer/create-apikey", "POST", { label });
-
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    setNewKey('');
     
-
-      if (response.data.createApiKey.success) {
-        setNewKey(response.data.data.api_key);
+    try {
+      const response = await apiClient.request("/developer/create-apikey", "POST", { label });
+      
+       const responseData = response.data;
+      
+      if (response.status >= 200 && response.status < 300 && responseData.success) {
+        setNewKey(responseData.data.api_key);
         setLabel('');
-       onKeyGenerated();
+        setMessage({
+          type: 'success',
+          text: responseData.message || 'API key created successfully!'
+        });
+        
+        setTimeout(() => onKeyGenerated(), 100);
+      } else {
+        // Handle API errors (400, 500, etc.)
+        setMessage({
+          type: 'error',
+          text: responseData.message || responseData.error || 'Failed to create API key'
+        });
       }
-  } catch (error) {
-    console.error("Error generating API key:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error: any) {
+      console.error("Error generating API key:", error);
+      
+      // Handle different error scenarios from your backend
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setMessage({
+        type: 'error',
+        text: errorMessage
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(newKey);
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(newKey);
+      setMessage({
+        type: 'success',
+        text: 'API key copied to clipboard!'
+      });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: 'Failed to copy to clipboard'
+      });
+    }
   };
 
   return (
@@ -67,7 +77,23 @@ const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenera
         <Plus size={20} className="mr-2 text-indigo-600" />
         Generate API Key
       </h2>
-      
+
+      {/* Success/Error Message */}
+      {message && (
+        <div className={`mb-4 p-4 rounded-lg flex items-center ${
+          message.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {message.type === 'success' ? (
+            <CheckCircle size={20} className="mr-2 text-green-600" />
+          ) : (
+            <XCircle size={20} className="mr-2 text-red-600" />
+          )}
+          <span className="text-sm font-medium">{message.text}</span>
+        </div>
+      )}
+
       <form onSubmit={handleGenerate} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -80,7 +106,12 @@ const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenera
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             placeholder="e.g., Production API, Test Environment"
             required
+            minLength={3}
+            maxLength={50}
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Label must be between 3 and 50 characters
+          </p>
         </div>
         
         <button
@@ -92,13 +123,14 @@ const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenera
         </button>
       </form>
 
+      {/* Display New API Key */}
       {newKey && (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-green-800">New API Key Generated</span>
             <button
               onClick={copyToClipboard}
-              className="flex items-center text-green-600 hover:text-green-700 text-sm"
+              className="flex items-center text-green-600 hover:text-green-700 text-sm hover:bg-green-100 px-2 py-1 rounded transition-colors"
             >
               <Copy size={16} className="mr-1" />
               Copy
@@ -115,4 +147,5 @@ const ApiKeyGenerator: React.FC<{ onKeyGenerated: () => void }> = ({ onKeyGenera
     </div>
   );
 };
+
 export default ApiKeyGenerator;

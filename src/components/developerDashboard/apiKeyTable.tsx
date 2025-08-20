@@ -1,17 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { ApiKey } from '../../../types';
 import InlineApiKeyDisplay from './apiKeyDisplay';
 
-
+// Helper function - move outside components to avoid recreating
+const formatDate = (dateString: any): string => {
+  if (!dateString) return 'N/A';
+  
+  // Convert to string and trim whitespace
+  const cleanDateString = String(dateString).trim();
+  
+  const date = new Date(cleanDateString);
+  
+  if (isNaN(date.getTime())) {
+    return 'N/A';
+  }
+  
+  return date.toLocaleDateString();
+};
 
 // Mobile card component for responsive design
 const MobileApiKeyCard: React.FC<{ apiKey: ApiKey }> = ({ apiKey }) => {
-  const formatDate = (dateString: string): string => {
-    if (!dateString || isNaN(new Date(dateString).getTime())) {
-      return 'N/A';
-    }
-    return new Date(dateString).toLocaleDateString();
-  };
+  const [formattedCreatedDate, setFormattedCreatedDate] = useState<string>('N/A');
+  const [formattedLastUsedDate, setFormattedLastUsedDate] = useState<string>('N/A');
+
+  useEffect(() => {
+    setFormattedCreatedDate(formatDate(apiKey.created_at));
+    setFormattedLastUsedDate(apiKey.last_used ? formatDate(apiKey.last_used) : 'Never');
+  }, [apiKey.created_at, apiKey.last_used]);
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -29,11 +44,11 @@ const MobileApiKeyCard: React.FC<{ apiKey: ApiKey }> = ({ apiKey }) => {
       <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
         <div>
           <span className="font-medium">Created:</span>{' '}
-          {formatDate(apiKey.created_at)}
+          {formattedCreatedDate}
         </div>
         <div>
           <span className="font-medium">Last Used:</span>{' '}
-          {apiKey.last_used ? formatDate(apiKey.last_used) : 'Never'}
+          {formattedLastUsedDate}
         </div>
       </div>
     </div>
@@ -42,13 +57,6 @@ const MobileApiKeyCard: React.FC<{ apiKey: ApiKey }> = ({ apiKey }) => {
 
 // Main table component
 const ApiKeysTable: React.FC<{ apiKeys: ApiKey[] }> = ({ apiKeys }) => {
-  const formatDate = (dateString: string): string => {
-    if (!dateString || isNaN(new Date(dateString).getTime())) {
-      return 'N/A';
-    }
-    return new Date(dateString).toLocaleDateString();
-  };
-
   return (
     <>
       {/* Desktop Table View - hidden on mobile */}
@@ -74,8 +82,8 @@ const ApiKeysTable: React.FC<{ apiKeys: ApiKey[] }> = ({ apiKeys }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {apiKeys.map((apiKey) => (
-              <tr key={apiKey._id} className="hover:bg-gray-50 transition-colors">
+            {apiKeys.map((apiKey, index) => (
+              <tr key={apiKey._id?.toString() || index} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                   <div className="text-sm font-medium text-gray-900">
                     {apiKey.label}
@@ -120,5 +128,5 @@ const ApiKeysTable: React.FC<{ apiKeys: ApiKey[] }> = ({ apiKeys }) => {
     </>
   );
 };
-export default ApiKeysTable;
 
+export default ApiKeysTable;

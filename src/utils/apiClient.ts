@@ -1,12 +1,31 @@
 const BASE_URL = import.meta.env.VITE_ENDPOINT;
 
+// Your original interface - preserved exactly as is
 interface ApiResponse {
+  // error: string;
   data: any;
   status: number;
 }
 
+// Enhanced interface for new TypeScript usage (optional)
+export interface TypedApiResponse<T = any> {
+  data: T;
+  status: number;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  error?: string;
+}
+
 const apiClient = {
-  request: async (endpoint: string, method = "GET", body?: Record<string, any>): Promise<ApiResponse> => {
+  request: async (
+    endpoint: string, 
+    method = "GET", 
+    body?: Record<string, any> | null, // Fixed: removed p0: null, made body optional
+    headers?: Record<string, any>
+  ): Promise<ApiResponse> => {
     const token = localStorage.getItem("token");
     
     try {
@@ -15,6 +34,7 @@ const apiClient = {
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...headers, // Allow additional headers to be passed
         },
         body: body ? JSON.stringify(body) : undefined,
       });
@@ -38,6 +58,23 @@ const apiClient = {
       console.error("Network error:", networkError);
       throw networkError;
     }
+  },
+
+  // Additional convenience methods (fixed to use correct parameters)
+  get: <T = any>(endpoint: string): Promise<TypedApiResponse<T>> => {
+    return apiClient.request(endpoint, 'GET') as Promise<TypedApiResponse<T>>;
+  },
+
+  post: <T = any>(endpoint: string, body?: Record<string, any>): Promise<TypedApiResponse<T>> => {
+    return apiClient.request(endpoint, 'POST', body) as Promise<TypedApiResponse<T>>;
+  },
+
+  put: <T = any>(endpoint: string, body?: Record<string, any>): Promise<TypedApiResponse<T>> => {
+    return apiClient.request(endpoint, 'PUT', body) as Promise<TypedApiResponse<T>>;
+  },
+
+  delete: <T = any>(endpoint: string): Promise<TypedApiResponse<T>> => {
+    return apiClient.request(endpoint, 'DELETE') as Promise<TypedApiResponse<T>>;
   },
 };
 
