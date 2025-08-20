@@ -125,10 +125,11 @@ const SignupScreen: React.FC = () => {
                 </p>
               </div>
 
-              <p className="text-slate-300 mb-6 text-sm leading-relaxed">
+             {success && <p className="text-slate-300 mb-6 text-sm leading-relaxed">
+                <CheckCircle />
                 We've sent a verification link to <strong className="text-white">{email}</strong>. 
                 Click the link in the email to verify your account and complete registration.
-              </p>
+              </p>}
 
               <div className="space-y-4">
                 <button
