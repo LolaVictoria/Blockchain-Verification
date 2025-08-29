@@ -18,6 +18,8 @@ const LoginScreen: React.FC = () => {
     const success = await login(email, password);
     if (!success) {
       setError('Invalid credentials. Please try again.');
+    } else {
+      navigate("/manufacturer-dashboard")
     }
   };
 

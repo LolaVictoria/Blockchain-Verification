@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield,  ChevronRight, Lock, Zap, Database } from 'lucide-react';
-import Footer from '../components/footer';
-import Navbar from '../components/navbar';
+import Footer from '../components/layout/footer';
+import Navbar from '../components/layout/navbar';
 import { Link } from 'react-router-dom';
 
 

@@ -1,97 +1,197 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Eye, EyeOff, Shield, Mail, CheckCircle } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
+import useAuth from '../../hooks/useAuth';
 import { Link, useNavigate } from 'react-router-dom';
 
-const SignupScreen: React.FC = () => {
+// Mock useAuth hook - replace with your actual hook import
+// const useAuth = () => {
+//   const [loading, setLoading] = useState(false);
+//   const [error, setError] = useState('');
+
+//   const signup = async (username, email, password, role, walletAddress, companyName) => {
+//     setLoading(true);
+//     try {
+//       // Simulate API call
+//       await new Promise(resolve => setTimeout(resolve, 2000));
+//       return {
+//         success: true,
+//         needsVerification: true,
+//         message: 'Registration successful! Please check your email for verification.'
+//       };
+//     } catch (err) {
+//       return { success: false, message: 'Registration failed' };
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const resendVerificationEmail = async (email) => {
+//     setLoading(true);
+//     try {
+//       await new Promise(resolve => setTimeout(resolve, 1000));
+//       return {
+//         success: true,
+//         message: 'Verification email sent successfully!'
+//       };
+//     } catch (err) {
+//       return { success: false, message: 'Failed to send verification email' };
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   const setError = (errorMsg) => {
+//     setError(errorMsg);
+//   };
+
+//   return { signup, loading, error, setError, resendVerificationEmail };
+// };
+
+const SignupScreen = () => {
   const [username, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'manufacturer' | 'developer' | null>(null);
+  const [role, setRole] = useState<string | null>(null); 
+  const [companyName, setCompanyName] = useState('');
   const [walletAddress, setWalletAddress] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showEmailVerification, setShowEmailVerification] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [localLoading, setLocalLoading] = useState(false); 
+  const [localError, setLocalError] = useState(''); 
+  const navigate = useNavigate()
+  const auth = useAuth();
   
-  const { signup, loading, error, setError, resendVerificationEmail } = useAuth();
-  const navigate = useNavigate();
   
-  const onSwitchToLogin = () => {
-    navigate('/login'); 
-  };
-
-  const validateForm = (): boolean => {
+  const validateForm = () => {
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setLocalError('Passwords do not match');
       return false;
     }
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setLocalError('Password must be at least 8 characters long');
       return false;
     }
 
     if (username.length < 3) {
-      setError('Username must be at least 3 characters long');
+      setLocalError('Username must be at least 3 characters long');
+      return false;
+    }
+
+    if (role === 'manufacturer' && !companyName.trim()) {
+      setLocalError('Company name is required for manufacturers');
       return false;
     }
 
     if (role === 'manufacturer' && !walletAddress.trim()) {
-      setError('Wallet address is required for manufacturers');
+      setLocalError('Wallet address is required for manufacturers');
       return false;
     }
 
     if (role === 'manufacturer' && !walletAddress.startsWith('0x')) {
-      setError('Please enter a valid wallet address starting with 0x');
+      setLocalError('Please enter a valid wallet address starting with 0x');
+      return false;
+    }
+
+    if (role === 'manufacturer' && !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
+      setLocalError('Please enter a valid Ethereum address (0x followed by 40 hex characters)');
       return false;
     }
 
     return true;
   };
 
+  // Fix: Remove duplicate function declarations
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setLocalError('');
     setSuccess(false);
+    setLocalLoading(true);
 
     if (!validateForm()) {
+      setLocalLoading(false);
       return;
     }
 
-    const result = await signup(
-      username.trim(), 
-      email.trim().toLowerCase(), 
-      password, 
-      role!, 
-      role === 'manufacturer' ? walletAddress.trim() : undefined
-    );
+    try {
+      // Fix: Use auth.signup if available, otherwise use mock
+      const signupFunction = auth?.signup;
+      const result = await signupFunction(
+        username.trim(), 
+        email.trim().toLowerCase(), 
+        password, 
+        role!, // Non-null assertion since we validate role exists
+        role === 'manufacturer' ? walletAddress.trim() : undefined,
+        role === 'manufacturer' ? companyName.trim() : undefined
+      );
 
-    if (result.success && result.needsVerification) {
-      setSuccess(true);
-      setSuccessMessage(result.message || 'Registration successful! Please check your email for verification.');
-      setShowEmailVerification(true);
-      
-      // Reset form
-      setUserName('');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setWalletAddress('');
-      setRole(null);
+      if (result.success && result.needsVerification) {
+        setSuccess(true);
+        setSuccessMessage(result.message || 'Registration successful! Please check your email for verification.');
+        setShowEmailVerification(true);
+        
+        // Reset form
+        setUserName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setWalletAddress('');
+        setCompanyName('');
+        setRole(null);
+      }
+    } catch (err) {
+      setLocalError('Registration failed. Please try again.');
+    } finally {
+      setLocalLoading(false);
     }
   };
 
   const handleResendVerification = async () => {
     if (!email) return;
     
-    const result = await resendVerificationEmail(email);
-    if (result.success) {
-      setSuccessMessage(result.message || 'Verification email sent successfully!');
+    setLocalLoading(true);
+    try {
+      // Fix: Use auth.resendVerificationEmail if available, otherwise use mock
+      const resendFunction = auth?.resendVerificationEmail;
+      const result = await resendFunction(email);
+      if (result.success) {
+        setSuccessMessage(result.message || 'Verification email sent successfully!');
+      }
+    } catch (err) {
+      setLocalError('Failed to resend verification email');
+    } finally {
+      setLocalLoading(false);
     }
   };
+
+  // Fix: Mock functions with proper typing
+  // const mockSignup = async (
+  //   username: string, 
+  //   email: string, 
+  //   password: string, 
+  //   role: string, 
+  //   walletAddress?: string, 
+  //   companyName?: string
+  // ) => {
+  //   await new Promise(resolve => setTimeout(resolve, 2000));
+  //   return {
+  //     success: true,
+  //     needsVerification: true,
+  //     message: 'Registration successful! Please check your email for verification.'
+  //   };
+  // };
+
+  // const mockResendVerificationEmail = async (email: string) => {
+  //   await new Promise(resolve => setTimeout(resolve, 1000));
+  //   return {
+  //     success: true,
+  //     message: 'Verification email sent successfully!'
+  //   };
+  // };
 
   // Email Verification Success Screen
   if (showEmailVerification) {
@@ -100,16 +200,14 @@ const SignupScreen: React.FC = () => {
         <div className="max-w-md mx-auto">
           <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-8">
             <div className="flex items-center justify-center mb-8">
-              <Link to="/">
-                <button className="flex items-center space-x-2">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
-                    <Shield className="w-9 h-9 text-white" />
-                  </div>
-                  <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                    VerifyChain
-                  </span>
-                </button>
-              </Link>
+              <button className="flex items-center space-x-2" onClick={() => console.log('Navigate to home')}>
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
+                  <Shield className="w-9 h-9 text-white" />
+                </div>
+                <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                  VerifyChain
+                </span>
+              </button>
             </div>
 
             <div className="text-center">
@@ -125,8 +223,8 @@ const SignupScreen: React.FC = () => {
                 </p>
               </div>
 
-             {success && <p className="text-slate-300 mb-6 text-sm leading-relaxed">
-                <CheckCircle />
+              {success && <p className="text-slate-300 mb-6 text-sm leading-relaxed">
+                <CheckCircle className="inline w-4 h-4 mr-1" />
                 We've sent a verification link to <strong className="text-white">{email}</strong>. 
                 Click the link in the email to verify your account and complete registration.
               </p>}
@@ -134,10 +232,10 @@ const SignupScreen: React.FC = () => {
               <div className="space-y-4">
                 <button
                   onClick={handleResendVerification}
-                  disabled={loading}
+                  disabled={localLoading}
                   className="w-full bg-slate-700 border border-slate-600 hover:border-blue-400 rounded-lg py-3 text-white hover:bg-slate-600 transition-all disabled:opacity-50"
                 >
-                  {loading ? (
+                  {localLoading ? (
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Sending...
@@ -150,7 +248,7 @@ const SignupScreen: React.FC = () => {
                 <button
                   onClick={() => {
                     setShowEmailVerification(false);
-                    onSwitchToLogin();
+                    navigate("/login")
                   }}
                   className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all"
                 >
@@ -158,9 +256,9 @@ const SignupScreen: React.FC = () => {
                 </button>
               </div>
 
-              {error && (
+              {localError && (
                 <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-lg mt-4">
-                  {error}
+                  {localError}
                 </div>
               )}
             </div>
@@ -175,16 +273,14 @@ const SignupScreen: React.FC = () => {
       <div className="max-w-md mx-auto">
         <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-8">
           <div className="flex items-center justify-center mb-8">
-            <Link to="/">
-              <button className="flex items-center space-x-2">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
-                  <Shield className="w-9 h-9 text-white" />
-                </div>
-                <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-                  VerifyChain
-                </span>
-              </button>
-            </Link>
+            <button className="flex items-center space-x-2" onClick={() => console.log('Navigate to home')}>
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
+                <Shield className="w-9 h-9 text-white" />
+              </div>
+              <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                VerifyChain
+              </span>
+            </button>
           </div>
           
           <div className="text-center mb-8">
@@ -195,14 +291,25 @@ const SignupScreen: React.FC = () => {
           {!role ? (
             <div className="space-y-4">
               <p className="text-slate-200 text-center mb-6">I am a:</p>
+              
+              <button 
+                onClick={() => setRole('customer')}
+                className="w-full bg-slate-700 border border-slate-600 hover:border-blue-400 rounded-lg p-4 text-left text-white hover:bg-slate-600 transition-all"
+              >
+                <div className="font-semibold">Customer</div>
+                <div className="text-sm text-slate-200">Verify product authenticity</div>
+                <div className="text-xs text-slate-400 mt-1">Quick registration with email verification</div>
+              </button>
+              
               <button 
                 onClick={() => setRole('manufacturer')}
                 className="w-full bg-slate-700 border border-slate-600 hover:border-blue-400 rounded-lg p-4 text-left text-white hover:bg-slate-600 transition-all"
               >
                 <div className="font-semibold">Manufacturer</div>
                 <div className="text-sm text-slate-200">Register and verify products on blockchain</div>
-                <div className="text-xs text-slate-400 mt-1">Requires wallet address verification</div>
+                <div className="text-xs text-slate-400 mt-1">Requires company details and wallet address verification</div>
               </button>
+              
               <button 
                 onClick={() => setRole('developer')}
                 className="w-full bg-slate-700 border border-slate-600 hover:border-blue-400 rounded-lg p-4 text-left text-white hover:bg-slate-600 transition-all"
@@ -213,138 +320,158 @@ const SignupScreen: React.FC = () => {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit}>
               <div className="text-center mb-4">
                 <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm">
-                  {role === 'manufacturer' ? 'Manufacturer' : 'Developer'} Account
+                  {role === 'manufacturer' ? 'Manufacturer' : role === 'developer' ? 'Developer' : 'Customer'} Account
                 </span>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-2">
-                  Username <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
-                  placeholder="Enter your username"
-                  required
-                  minLength={3}
-                  maxLength={50}
-                />
-              </div>             
-              
-              <div>
-                <label className="block text-slate-300 mb-2">
-                  Email Address <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
-                  placeholder="your@email.com"
-                  required
-                />
-              </div>
-
-              {role === 'manufacturer' && (
+              <div className="space-y-6">
                 <div>
                   <label className="block text-slate-300 mb-2">
-                    Wallet Address <span className="text-red-400">*</span>
+                    Username <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="text"
-                    value={walletAddress}
-                    onChange={(e) => setWalletAddress(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUserName(e.target.value)}
                     className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
-                    placeholder="0x..."
-                    required={role === 'manufacturer'}
-                  />
-                  <p className="text-xs text-slate-400 mt-1">
-                    Your wallet will be used for product registration and verification
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-slate-300 mb-2">
-                  Password <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none pr-12"
-                    placeholder="••••••••"
+                    placeholder="Enter your username"
                     required
-                    minLength={8}
+                    minLength={3}
+                    maxLength={50}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">Minimum 8 characters</p>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 mb-2">
-                  Confirm Password <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
+                </div>             
+                
+                <div>
+                  <label className="block text-slate-300 mb-2">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
                   <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none pr-12"
-                    placeholder="••••••••"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
+                    placeholder="your@email.com"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
-                  >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
                 </div>
-              </div>
 
-              {error && (
-                <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Creating Account...
+                {role === 'manufacturer' && (
+                  <div>
+                    <label className="block text-slate-300 mb-2">
+                      Company Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={(e) => setCompanyName(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
+                      placeholder="Enter your company name"
+                      required={role === 'manufacturer'}
+                    />
                   </div>
-                ) : (
-                  'Create Account'
                 )}
-              </button>
-              
-              <button 
-                type="button"
-                onClick={() => setRole(null)}
-                className="w-full text-slate-400 hover:text-white transition-colors"
-              >
-                ← Back to account type
-              </button>
+
+                {role === 'manufacturer' && (
+                  <div>
+                    <label className="block text-slate-300 mb-2">
+                      Ethereum Wallet Address <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={walletAddress}
+                      onChange={(e) => setWalletAddress(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none"
+                      placeholder="0x..."
+                      required={role === 'manufacturer'}
+                      pattern="^0x[a-fA-F0-9]{40}$"
+                      title="Please enter a valid Ethereum address (0x followed by 40 hex characters)"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">
+                      This wallet will be used for blockchain product registration
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-slate-300 mb-2">
+                    Password <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none pr-12"
+                      placeholder="••••••••"
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Minimum 8 characters</p>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 mb-2">
+                    Confirm Password <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 text-white focus:border-blue-400 focus:outline-none pr-12"
+                      placeholder="••••••••"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3.5 text-slate-400 hover:text-white transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </div>
+                </div>
+
+                {localError && (
+                  <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+                    {localError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={localLoading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {localLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Creating Account...
+                    </div>
+                  ) : (
+                    'Create Account'
+                  )}
+                </button>
+                
+                <button 
+                  type="button"
+                  onClick={() => setRole(null)}
+                  className="w-full text-slate-400 hover:text-white transition-colors"
+                >
+                  ← Back to account type
+                </button>
+              </div>
             </form>
           )}
 
@@ -352,10 +479,12 @@ const SignupScreen: React.FC = () => {
             <p className="text-slate-100">
               Already have an account?{' '}
               <Link to="/login">
-                <button className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                  Sign in
-                </button>
-              </Link>
+              <button 
+                className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+                >
+                Sign in
+              </button>
+                </Link>
             </p>
           </div>
         </div>

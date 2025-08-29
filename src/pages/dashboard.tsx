@@ -2,25 +2,21 @@
 import { useAuth } from "../hooks/useAuth";
 import { Shield, LogOut } from "lucide-react";
 import ManufacturerDashboard from "./ManufacturerDashboard";
-import DeveloperDashboard from "./developerDashboard";
+// import DeveloperDashboard from "./developerDashboard";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
-  const { user, logout, fetchCurrentUser } = useAuth(); 
+  const { user, logout } = useAuth(); 
   const { role, id } = useParams<{ role: string; id: string }>();
 
   useEffect(() => {
     if (user) {
       // context already has user
       setUserRole(user.role);
-    } else if (role && id) {
-      // fallback: fetch user using params on reload
-      fetchCurrentUser(id);
-      setUserRole(role);
     }
-  }, [user, role, id, fetchCurrentUser]);
+  }, [user, role, id]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,7 +67,8 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {userRole === "manufacturer" ? <ManufacturerDashboard /> : <DeveloperDashboard />}
+        {/* {userRole === "manufacturer" ? <ManufacturerDashboard /> : <DeveloperDashboard />} */}
+        <ManufacturerDashboard />
       </main>
     </div>
   );

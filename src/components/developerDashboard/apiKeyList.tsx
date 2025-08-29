@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import apiClient from "../../utils/apiClient";
-import type { ApiKey } from "../../../types";
+import type { ApiKey } from "../../../types/auth";
 import { Key } from "lucide-react";
 import ApiKeysTable from "./apiKeyTable";
 

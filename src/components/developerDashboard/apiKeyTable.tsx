@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { ApiKey } from '../../../types';
+import type { ApiKey } from '../../../types/auth';
 import InlineApiKeyDisplay from './apiKeyDisplay';
 
 // Helper function - move outside components to avoid recreating

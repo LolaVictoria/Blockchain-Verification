@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
+import { VerificationProvider } from "../context/VerificationContext"
 import HomePage from './pages/homePage';
 import HowItWorksPage from './pages/howItWorks';
 import AboutPage from './pages/aboutPage';
@@ -9,11 +10,16 @@ import LoginScreen from './components/auth/login';
 import SignupScreen from './components/auth/signup';
 import Dashboard from './pages/dashboard';
 import NotFound from './pages/NotFound';
-import AdminDashboard from './pages/admin';
+import VerifyPage from './pages/verify';
+
+// import AdminDashboard from './pages/admin';
+// import ManufacturerDashboard from './pages/ManufacturerDashboard';
 
 const App: React.FC = () => {
+  
 
   return (
+    <VerificationProvider>
     <AuthProvider>
       <Router>
         <Routes>
@@ -22,13 +28,16 @@ const App: React.FC = () => {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<LoginScreen />} />
+          <Route path="/verify" element={<VerifyPage />} />
           <Route path="/signup" element={<SignupScreen/>} />
           <Route path="/dashboard/:role/:id/" element={<Dashboard />} />
-          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          {/* <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/manufacturer-dashboard" element={<ManufacturerDashboard />} /> */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>
+    </VerificationProvider>
   );
 };
 

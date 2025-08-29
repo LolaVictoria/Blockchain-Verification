@@ -50,7 +50,7 @@ users:
   _id, email, password_hash, role (manufacturer|developer), created_at
 
 products:
-  _id, serial_number, name, manufacturer_id, blockchain_tx_hash, registered_at, verified (bool)
+  _id, serial_number, name, manufacturer_id, transaction_hash, registered_at, verified (bool)
 
 apikeys:
   _id, user_id, key, label, created_at, revoked

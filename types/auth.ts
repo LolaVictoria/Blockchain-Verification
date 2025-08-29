@@ -2,19 +2,36 @@
 
 export interface User {
   id: string;
-  username: string;
-  email: string;
-  role: 'developer' | 'manufacturer';
-  wallet_address?: string;
-  is_auth_verified: boolean;
-  is_admin: boolean;
-  is_active: boolean;
-  created_at?: string;
-  auth_verification_status: boolean
-  updated_at?: string; 
-  wallet_verification_status: 'pending' | 'verified' | 'rejected';
+  password_hash?: string; 
+  // role: 'manufacturer' | 'customer' | 'developer';
+  role: string
+  created_at: string;
+  updated_at: string;
+  // verification_status: 'pending' | 'verified' | 'rejected';
+  verification_status: string
+  
+  // Company related
+  company_names: string[];
+  current_company_name: string;
+  
+  // Email related
+  emails: string[];
+  primary_email: string;
+  
+  // Wallet related
+  primary_wallet: string;
+  verified_wallets: string[];
+  wallet_addresses: string[];
+  
+  // Additional fields that might exist
+  username?: string;
+  email?: string; // Legacy field, might be same as primary_email
+  is_auth_verified?: boolean;
+  is_admin?: boolean;
+  is_active?: boolean;
+  auth_verification_status?: boolean;
+  wallet_verification_status?: string;
 }
-
 export interface AuthContextType {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -29,23 +46,20 @@ export interface AuthContextType {
     email: string,
     password: string,
     role: string,
-    walletAddress?: string
+    walletAddress?: string,
+    companyName?: string
   ) => Promise<{ success: boolean; needsVerification?: boolean; message?: string }>;
   logout: () => Promise<void>;
   
   // Email verification methods
   verifyEmail: (token: string) => Promise<{ success: boolean; message?: string }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
-  
-  // User profile methods
-  fetchCurrentUser: (id: string) => Promise<User | null>;
-  
+
   // Utility methods
   clearError: () => void;
   isUserVerified: () => boolean;
   isUserApproved: () => boolean;
-  getUserVerificationStatus: () => 'pending' | 'verified' | 'rejected' | null;
-  checkTokenValidity: () => Promise<boolean>;
+  getUserVerificationStatus: () => string | null;
 }
 
 
@@ -66,17 +80,14 @@ export interface LoginFormData {
   password: string;
 }
 
-export interface Product {
-  _id?: string;
-  serial_number: string;
-  product_name: string;
-  category: string;
-  description?: string;
-  manufacturer_id: string;
-  manufacturer_address: string;
-  blockchain_tx_hash: string;
-  registered_at: string;
-  verified: boolean;
+export interface ProfileUpdateRequest {
+  action: 'add_email' | 'remove_email' | 'set_primary_email' | 
+          'add_wallet' | 'set_primary_wallet' | 
+          'update_company';
+  email?: string;
+  wallet_address?: string;
+  label?: string;
+  company_name?: string;
 }
 
 export interface ApiKey {
@@ -149,30 +160,38 @@ export interface ApiResponse<T = any> {
   message?: string;
   error?: string;
   status: number;
+  token: string
 }
 
 export interface LoginResponse {
-  access_token: string;
+  token: string;
   refresh_token: string;
   user: User;
   authenticated: boolean;
+  error?: string
+  message?: string;
 }
 
 export interface SignupResponse {
   user_id: string;
   message: string;
   email_sent: boolean;
+  error?: string;
 }
 
 export interface ProfileResponse {
   user: User;
   profile_loaded: boolean;
+  error?: string;
+  success: boolean;
+  message: string
 }
 
 export interface EmailVerificationResponse {
   message: string;
   user_id: string;
   verified: boolean;
+  error?: string;
 }
 
 
@@ -214,8 +233,10 @@ export interface AuthGuardProps {
 }
 
 // Verification status types
-export type VerificationStatus = 'pending' | 'verified' | 'rejected';
-export type UserRole = 'manufacturer' | 'developer';
+// export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+export type VerificationStatus = string
+// export type UserRole = 'manufacturer' | 'developer';
+export type UserRole = string
 
 // Token payload type (for JWT decoding if needed)
 export interface TokenPayload {
@@ -225,7 +246,18 @@ export interface TokenPayload {
   username: string;
   is_verified: boolean;
   is_admin: boolean;
-  verification_status: VerificationStatus;
+  verification_status: string;
   exp: number;
   iat: number;
+  current_company_name: string;
+  primary_wallet: string;
+  
+  // Additional fields from database
+  created_at: string;
+  updated_at: string;
+  company_names: string[];
+  emails: string[];
+  primary_email: string;
+  verified_wallets: string[];
+  wallet_addresses: string[];
 }

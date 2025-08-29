@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
-import type { ApiKey } from '../../../types';
+import type { ApiKey } from '../../../types/auth';
 
 
 // const ApiKeyDisplay: React.FC<ApiKeyDisplayProps> = ({ apiKey }) => {
