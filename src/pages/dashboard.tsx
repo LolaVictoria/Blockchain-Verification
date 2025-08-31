@@ -47,10 +47,10 @@ const Dashboard: React.FC = () => {
                 </div>
               )}
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.email}</p>
-                {user?.wallet_address && (
+                <p className="text-sm font-medium text-gray-900">{user?.primary_email}</p>
+                {user?.primary_wallet && (
                   <p className="text-xs text-gray-500 font-mono">
-                    {user.wallet_address.slice(0, 6)}...{user.wallet_address.slice(-4)}
+                    {user.primary_wallet.slice(0, 6)}...{user.primary_wallet.slice(-4)}
                   </p>
                 )}
               </div>

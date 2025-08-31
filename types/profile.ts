@@ -42,14 +42,14 @@ export interface DashboardStats {
 }
 
 export interface AuthState {
-  user: User | null;
+  user: User;
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
 }
 
 export interface ProfileState {
-  user: User | null;
+  user: User;
   loading: boolean;
   error: string | null;
 }
@@ -159,7 +159,7 @@ export interface ApiError {
 
 // Hook return types
 export interface UseAuthReturn {
-  user: User | null;
+  user: User;
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
@@ -170,7 +170,7 @@ export interface UseAuthReturn {
 }
 
 export interface UseProfileReturn {
-  user: User | null;
+  user: User;
   loading: boolean;
   error: string | null;
   updateProfile: (user: User) => Promise<void>;

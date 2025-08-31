@@ -201,7 +201,7 @@ api_usage:
 If you want, I can **draw a neat architecture diagram** showing the blockchain, backend, frontend, and integration flows visually so it’s easier to present or follow.
 Do you want me to prepare that?
 
- const fetchCurrentUser = async (): Promise<User | null> => {
+ const fetchCurrentUser = async (): Promise<User> => {
   setLoading(true);
   try {
     const response = await apiClient.request("/auth/profile", "GET", null, {

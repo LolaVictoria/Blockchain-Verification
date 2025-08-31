@@ -25,7 +25,6 @@ export interface User {
   
   // Additional fields that might exist
   username?: string;
-  email?: string; // Legacy field, might be same as primary_email
   is_auth_verified?: boolean;
   is_admin?: boolean;
   is_active?: boolean;
@@ -33,13 +32,13 @@ export interface User {
   wallet_verification_status?: string;
 }
 export interface AuthContextType {
-  user: User | null;
-  setUser: (user: User | null) => void;
+  // State
+  user: User;
+  isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  setError: (error: string | null) => void;
   
-  // Authentication methods
+  // Actions
   login: (email: string, password: string) => Promise<boolean>;
   signup: (
     username: string,
@@ -49,18 +48,47 @@ export interface AuthContextType {
     walletAddress?: string,
     companyName?: string
   ) => Promise<{ success: boolean; needsVerification?: boolean; message?: string }>;
-  logout: () => Promise<void>;
+  logout: () => void;
+  refreshProfile: () => Promise<User>;
+  updateProfile: (profileData: Partial<User>) => Promise<User>;
+  loadUserProfile: (forceRefresh?: boolean) => Promise<User>;
   
-  // Email verification methods
+  // Specific profile operations
+  addEmail: (email: string) => Promise<User>;
+  removeEmail: (email: string) => Promise<User>;
+  setPrimaryEmail: (email: string) => Promise<User>;
+  addWallet: (wallet_address: string) => Promise<User>;
+  removeWallet: (wallet_address: string) => Promise<User>;
+  setPrimaryWallet: (wallet_address: string) => Promise<User>;
+  updateCompanyName: (company_name: string) => Promise<User>;
+  quickUpdate: (field: string, value: any) => Promise<User>;
+  
+  // Batch operations
+  batchUpdateProfile: (operations: {
+    emails?: Array<{ operation: 'add' | 'remove' | 'set_primary'; email: string }>;
+    wallets?: Array<{ operation: 'add' | 'remove' | 'set_primary'; wallet_address: string }>;
+    company?: string;
+    directUpdates?: { [key: string]: any };
+  }) => Promise<User>;
+  
+  // Email verification
   verifyEmail: (token: string) => Promise<{ success: boolean; message?: string }>;
   resendVerificationEmail: (email: string) => Promise<{ success: boolean; message?: string }>;
-
-  // Utility methods
   clearError: () => void;
+  
+  // Utility methods
+  checkAuthStatus: () => boolean;
   isUserVerified: () => boolean;
   isUserApproved: () => boolean;
   getUserVerificationStatus: () => string | null;
+  getRedirectUrl: () => string;
+  formatWalletAddress: (address: string) => string;
+  isValidEthereumAddress: (address: string) => boolean;
+  generateSerialNumber: () => string;
 }
+
+// Hook return types - now this will work correctly
+export interface UseAuthReturn extends AuthContextType {}
 
 
 
@@ -147,7 +175,7 @@ export interface AdminUser {
 export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
-  admin: AdminUser | null;
+  admin: AdminUser;
   error: string | null;
   loginAttempts: number;
 }
@@ -213,9 +241,6 @@ export interface ApiError {
     };
   };
 }
-
-// Hook return types
-export interface UseAuthReturn extends AuthContextType {}
 
 // Component prop types
 export interface EmailVerificationProps {

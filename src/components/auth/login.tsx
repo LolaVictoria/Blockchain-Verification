@@ -1,5 +1,5 @@
 // Login Component
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Shield, Eye, EyeOff, LogIn } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,15 +19,10 @@ const LoginScreen: React.FC = () => {
     if (!success) {
       setError('Invalid credentials. Please try again.');
     } else {
-      navigate("/manufacturer-dashboard")
+      navigate(`/dashboard/${user.role}/${user.id}`);
     }
   };
 
-  useEffect(() => {
-  if (user?.role && user?.id) {
-    navigate(`/dashboard/${user.role}/${user.id}`);
-  }
-}, [user, navigate]);
 
   return (
     <div className="py-20 px-4 min-h-screen bg-gradient-to-br from-blue-900 to-slate-800">

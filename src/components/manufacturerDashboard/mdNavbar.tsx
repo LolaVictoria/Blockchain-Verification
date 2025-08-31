@@ -3,11 +3,11 @@ import React, { useState, type Dispatch, type SetStateAction } from 'react';
 import { User, LogOut, RefreshCw, Settings, Menu, X, Shield } from 'lucide-react';
 import type { User as UserType } from '../../../types/auth';
 import authService from '../../utils/AuthService';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface DashboardNavbarProps {
   user: UserType;
-  onRefreshProfile?: () => Promise<void>; 
+  onRefreshProfile?: () => Promise<UserType>; 
   setShowEditProfile: Dispatch<SetStateAction<boolean>>
   onProductDisplay: () => void
 }
@@ -19,7 +19,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const navigate = useNavigate()
   const handleRefreshProfile = async () => {
     if (!onRefreshProfile) return;
     
@@ -90,15 +90,20 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                 <div>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="max-w-xs bg-gray-800 rounded-full w-10 h-10 flex items-center justify-center text-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white"
+                    className=" rounded-full p-0.5  flex items-center justify-center text-sm text-white"
                     id="user-menu-button"
                   >
                     <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
                       <User className="h-5 w-5 text-white" />
                     </div>
-                    <span className="ml-2 text-gray-700 font-medium">
-                      {user.username}
+                    <div className='flex flex-col items-start gap-y-1'>
+                     <span className="ml-2 text-gray-700 font-semibold">
+                      {user.current_company_name}
                     </span>
+                    <span className="ml-2 text-gray-700 font-light text-sm">
+                      {user.primary_email}
+                    </span>
+                    </div>
                   </button>
                 </div>
 
@@ -109,7 +114,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
                       {/* User Info */}
                       <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
                         <div className="font-medium">{user.username}</div>
-                        <div className="text-gray-500">{user.email}</div>
+                        <div className="text-gray-500">{user.primary_email}</div>
                         <div className="text-xs text-blue-600 capitalize">
                           {user.role}
                         </div>
@@ -144,7 +149,10 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
                       {/* Logout */}
                       <button
-                        onClick={() => authService.logout()}
+                        onClick={() => {
+                          authService.logout()
+                          navigate("/")
+                        }}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         <LogOut className="mr-3 h-4 w-4" />
@@ -160,15 +168,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
           {/* Mobile menu and user profile section */}
           <div className="md:hidden flex items-center space-x-3">
             {/* Mobile User Profile Icon - Always visible */}
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-              </div>
-              <div className="text-sm">
-                <div className="font-medium text-gray-800">{user.username}</div>
-                <div className="text-xs text-gray-500 capitalize">{user.role}</div>
-              </div>
-            </div>
+            
 
             {/* Mobile Refresh Button */}
             {onRefreshProfile && (
@@ -202,6 +202,19 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <div className="md:hidden">
+          <div className="flex items-center space-x-0.5 px-2 sm:px-3">
+              <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                <User className="h-5 w-5 text-white" />
+              </div>
+               <div className='flex flex-col items-start gap-y-1'>
+                     <span className="ml-2 text-gray-700 font-medium">
+                      {user.current_company_name}
+                    </span>
+                    <span className="ml-2 text-gray-700 font-light text-xs">
+                      {user.primary_email}
+                    </span>
+                    </div>
+            </div>
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
             {/* Mobile Navigation Links */}
             <button className="text-gray-700 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left">
@@ -239,7 +252,10 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
               </button>
 
               <button
-                onClick={() => authService.logout()}
+                onClick={() => {
+                          authService.logout()
+                          navigate("/")
+                        }}
                 className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
               >
                 <LogOut className="mr-3 h-5 w-5" />

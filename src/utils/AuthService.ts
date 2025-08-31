@@ -1,3 +1,4 @@
+// utils/AuthService.ts - Unified Authentication & Profile Service
 import apiClient from './apiClient';
 import type {
   User,
@@ -5,22 +6,51 @@ import type {
   SignupResponse,
   ProfileResponse,
   EmailVerificationResponse,
-  TokenPayload,
-  // VerificationStatus
+  TokenPayload
 } from '../../types/auth';
+
+// Profile update interfaces
+interface EmailOperation {
+  operation: 'add' | 'remove' | 'set_primary';
+  email: string;
+}
+
+interface WalletOperation {
+  operation: 'add' | 'remove' | 'set_primary';
+  wallet_address: string;
+}
+
+interface ProfileUpdateRequest {
+  email_operations?: EmailOperation[];
+  wallet_operations?: WalletOperation[];
+  company_name?: string;
+  direct_updates?: {
+    primary_email?: string;
+    primary_wallet?: string;
+    emails?: string[];
+    wallet_addresses?: string[];
+    current_company_name?: string;
+    [key: string]: any;
+  };
+}
 
 export class AuthService {
   private static instance: AuthService;
-
-  // App state equivalent to your vanilla JS AppState
+  
+  // Single app state - the source of truth
   public appState = {
-    user: null as User | null,
+    user: {} as User,
     isAuthenticated: false,
-    products: [] as any[],
-    currentPage: 'home'
+    loading: false,
+    error: null as string | null
   };
 
-  private constructor() { }
+  // Subscribers for state changes (for React hooks)
+  private subscribers: Set<() => void> = new Set();
+
+  private constructor() {
+    this.initializeFromStorage();
+  }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -29,146 +59,162 @@ export class AuthService {
     return AuthService.instance;
   }
 
-  // Equivalent to checkAuthStatus() from main.js
-  checkAuthStatus(): boolean {
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1])) as TokenPayload;
-        const now = Date.now() / 1000;
+  // Subscribe to state changes (for React hooks)
+  subscribe(callback: () => void): () => void {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
+  }
 
-        if (payload.exp > now) {
-          this.appState.isAuthenticated = true;
-          this.appState.user = {
-            id: payload.user_id,
-            username: payload.username,
-            email: payload.identity,
-            role: payload.role,
-            is_auth_verified: payload.is_verified,
-            is_admin: payload.is_admin,
-            is_active: true,
-            auth_verification_status: payload.is_verified,
-            wallet_verification_status: payload.verification_status,
-            current_company_name: payload.current_company_name,
-            primary_wallet: payload.primary_wallet,
-  
-  // Add missing required fields with default values or from payload
-          created_at: payload.created_at || '',
-          updated_at: payload.updated_at || '',
-          verification_status: payload.verification_status || 'pending',
-          company_names: payload.company_names || [],
-          emails: payload.emails || [],
-          primary_email: payload.primary_email || payload.identity,
-          verified_wallets: payload.verified_wallets || [],
-          wallet_addresses: payload.wallet_addresses || []
-};
-          return true;
-        } else {
-          this.logout();
-          return false;
+  // Notify all subscribers of state changes
+  private notify(): void {
+    this.subscribers.forEach(callback => callback());
+  }
+
+  // Update state and notify subscribers
+  private updateState(updates: Partial<typeof this.appState>): void {
+    Object.assign(this.appState, updates);
+    this.notify();
+  }
+
+  // Initialize from localStorage on app startup
+  private initializeFromStorage(): void {
+    try {
+      const token = this.getToken();
+      if (token && this.isTokenValid(token)) {
+        // Token exists and is valid, set authenticated state
+        this.appState.isAuthenticated = true;
+        
+        // Try to get user from localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            this.appState.user = JSON.parse(storedUser);
+          } catch (e) {
+            console.warn('Failed to parse stored user data');
+            localStorage.removeItem('user');
+          }
         }
-      } catch (error) {
-        console.error('Invalid token:', error);
-        this.logout();
+      } else {
+        this.clearSession();
+      }
+    } catch (error) {
+      console.error('Error initializing from storage:', error);
+      this.clearSession();
+    }
+  }
+
+  // Check if token is valid
+  private isTokenValid(token: string): boolean {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as TokenPayload;
+      const now = Date.now() / 1000;
+      return payload.exp > now;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Get user data from token
+  private getUserFromToken(token: string): User {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1])) as TokenPayload;
+    return {
+      id: payload.user_id,
+      username: payload.username,
+      role: payload.role,
+      is_auth_verified: payload.is_verified,
+      is_admin: payload.is_admin,
+      is_active: true,
+      auth_verification_status: payload.is_verified,
+      wallet_verification_status: payload.verification_status,
+      current_company_name: payload.current_company_name,
+      primary_wallet: payload.primary_wallet,
+      created_at: payload.created_at || '',
+      updated_at: payload.updated_at || '',
+      verification_status: payload.verification_status || 'pending',
+      company_names: payload.company_names || [],
+      emails: payload.emails || [],
+      primary_email: payload.primary_email || payload.identity,
+      verified_wallets: payload.verified_wallets || [],
+      wallet_addresses: payload.wallet_addresses || []
+    };
+  } catch (error) {
+    console.error('Error parsing user from token:', error);
+    throw new Error('Invalid token'); // Or return a default user object
+  }
+}
+
+  // Get current authentication status
+ checkAuthStatus(): boolean {
+  const token = this.getToken();
+  if (token && this.isTokenValid(token)) {
+    if (!this.appState.user) {
+      // If we don't have user data, try to get it from token
+      const userFromToken = this.getUserFromToken(token);
+      if (userFromToken) {
+        this.appState.user = userFromToken;
+        this.updateState({ isAuthenticated: true });
+        return true;
+      } else {
+        // If we can't get user from token, clear session
+        this.clearSession();
         return false;
       }
     }
+    this.updateState({ isAuthenticated: true });
+    return true;
+  } else {
+    this.clearSession();
     return false;
   }
+}
 
-
+  // LOGIN - The main entry point
   async login(email: string, password: string): Promise<boolean> {
+    this.updateState({ loading: true, error: null });
+
     try {
-      // Basic validation
       if (!email || !password) {
         throw new Error('Please enter both email and password');
       }
-
-      console.log('Making login request to:', '/auth/login');
-      console.log('Request data:', { email: email.trim().toLowerCase(), password: '[HIDDEN]' });
 
       const response = await apiClient.post<LoginResponse>('/auth/login', {
         email: email.trim().toLowerCase(),
         password
       });
 
-      console.log('Login response received:', {
-        status: response.status,
-        hasAccessToken: response.data.token,
-        hasUser: response.data.user
-      });
-
-      if (response.status == 200 && response.data.token) {
-        this.appState.isAuthenticated = true;
-
-        // Store tokens and user info (matching your main.js pattern)
-        localStorage.setItem('token', response.data.token);
+      if (response.status === 200 && response.data.token) {
+        // Store tokens
         localStorage.setItem('authToken', response.data.token);
         if (response.data.refresh_token) {
           localStorage.setItem('refreshToken', response.data.refresh_token);
         }
 
         // Store user data
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        localStorage.setItem('user_role', response.data.user.role);
-        this.appState.user = response.data.user;
+        const userData = response.data.user;
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('user_role', userData.role);
 
-        console.log('Login successful, tokens stored');
+        // Update state
+        this.updateState({
+          user: userData,
+          isAuthenticated: true,
+          loading: false,
+          error: null
+        });
+        console.log('Login successful:', userData.username);
         return true;
       } else {
-        console.error('Login failed - invalid response:', response.data);
         throw new Error(response.data.error || 'Login failed');
       }
     } catch (error: any) {
-      console.error('Login error caught:', error);
-
-      // Check if it's an axios error with response
-      if (error.response) {
-        console.error('Server responded with error:', {
-          status: error.response.status,
-          data: error.response.data
-        });
-
-        const status = error.response.status;
-        const serverMessage = error.response.data?.message || error.response.data?.error;
-
-        // Handle specific HTTP status codes
-        if (status === 400) {
-          throw new Error(serverMessage || 'Please provide both email and password');
-        } else if (status === 401) {
-          throw new Error(serverMessage || 'Invalid credentials');
-        } else if (status === 403) {
-          throw new Error(serverMessage || 'Account access denied');
-        } else if (status === 404) {
-          throw new Error('Login endpoint not found');
-        } else if (status >= 500) {
-          throw new Error(serverMessage || 'Server error. Please try again later.');
-        } else {
-          throw new Error(serverMessage || `Login failed (${status})`);
-        }
-      }
-      // Check if it's a network error (no response received)
-      else if (error.request) {
-        console.error('Network error - no response received:', error.request);
-        throw new Error('Unable to connect to server. Please check your internet connection.');
-      }
-      // Check for specific error codes
-      else if (error.code === 'ERR_NETWORK') {
-        console.error('Network/CORS error:', error);
-        throw new Error('Network error. Please check your connection and try again.');
-      }
-      // Handle custom validation errors (thrown earlier in this function)
-      else if (error.message === 'Please enter both email and password') {
-        throw error;
-      }
-      // Handle any other errors
-      else {
-        console.error('Unexpected error type:', error);
-        throw new Error(error.message || 'Login failed. Please try again.');
-      }
+      const errorMessage = this.handleApiError(error, 'Login failed');
+      this.updateState({ loading: false, error: errorMessage });
+      throw new Error(errorMessage);
     }
   }
 
+  // SIGNUP
   async signup(
     username: string,
     email: string,
@@ -177,6 +223,8 @@ export class AuthService {
     walletAddress?: string,
     companyName?: string
   ): Promise<{ success: boolean; needsVerification?: boolean; message?: string }> {
+    this.updateState({ loading: true, error: null });
+
     try {
       const signupData: any = {
         username: username.trim(),
@@ -185,7 +233,6 @@ export class AuthService {
         role
       };
 
-      // Add manufacturer-specific fields (matching main.js pattern)
       if (role === 'manufacturer') {
         if (walletAddress) signupData.wallet_address = walletAddress.trim();
         if (companyName) signupData.company_name = companyName.trim();
@@ -194,6 +241,7 @@ export class AuthService {
       const response = await apiClient.post<SignupResponse>('/auth/signup', signupData);
 
       if (response.status === 201 || response.status === 200) {
+        this.updateState({ loading: false, error: null });
         return {
           success: true,
           needsVerification: true,
@@ -203,136 +251,35 @@ export class AuthService {
         throw new Error(response.data.error || 'Signup failed');
       }
     } catch (error: any) {
-      console.error('Signup error:', error);
-      throw new Error(error.message || error.data?.error || 'Signup failed');
+      const errorMessage = this.handleApiError(error, 'Signup failed');
+      this.updateState({ loading: false, error: errorMessage });
+      throw new Error(errorMessage);
     }
   }
-  
-// In your AuthService
-async updateUserProfile(profileData: Partial<User>): Promise<User> {
-  try {
-    const token = this.getToken();
-    if (!token) {
-      throw new Error('No authentication token found');
+
+  // LOAD/REFRESH USER PROFILE - Consolidated method
+  async loadUserProfile(forceRefresh: boolean = false): Promise<User> {
+    // Check if user is authenticated
+    if (!this.checkAuthStatus()) {
+      throw new Error('User not authenticated');
     }
 
-    const response = await apiClient.put<ProfileResponse>('/profile', profileData, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (response.status === 200 && response.data?.user) {
-      // Update local state and cache
-      this.appState.user = response.data.user;
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      localStorage.setItem('lastProfileFetch', Date.now().toString());
-      
-      return response.data.user;
-    } else {
-      throw new Error(response.data?.error || 'Profile update failed');
+    // If we have user data and not forcing refresh, return cached data
+    if (this.appState.user && !forceRefresh) {
+      return this.appState.user;
     }
-  } catch (error: any) {
-    console.error('Profile update error:', error);
-    
-    if (error.response?.status === 401) {
-      this.logout();
-      throw new Error('Authentication failed');
-    }
-    
-    throw new Error(error.response?.data?.error || error.message || 'Profile update failed');
-  }
-}
 
-  // Email verification function
-  async verifyEmail(token: string): Promise<{ success: boolean; message?: string }> {
+    this.updateState({ loading: true, error: null });
+
     try {
-      const response = await apiClient.post<EmailVerificationResponse>('/auth/verify-email', {
-        token
-      });
-
-      if (response.status === 200) {
-        return {
-          success: true,
-          message: response.data.message || 'Email verified successfully!'
-        };
-      } else {
-        throw new Error(response.data.error || 'Email verification failed');
-      }
-    } catch (error: any) {
-      console.error('Email verification error:', error);
-      throw new Error(error.message || 'Email verification failed');
-    }
-  }
-
-  // Resend verification email function
-  async resendVerificationEmail(email: string): Promise<{ success: boolean; message?: string }> {
-    try {
-      const response = await apiClient.post('/auth/resend-verification', {
-        email: email.trim().toLowerCase()
-      });
-
-      if (response.status === 200) {
-        return {
-          success: true,
-          message: response.data.message || 'Verification email sent successfully!'
-        };
-      } else {
-        throw new Error(response.data.error || 'Failed to resend verification email');
-      }
-    } catch (error: any) {
-      console.error('Resend verification error:', error);
-      throw new Error(error.message || 'Failed to resend verification email');
-    }
-  }
-
-  // Load user profile 
-  async loadUserProfile(role?: string, forceRefresh: boolean = false): Promise<User | null> {
-    try {
-      console.log('loadUserProfile called:', { role, forceRefresh });
-
-      // If not forcing refresh, try to get user data from localStorage first
-      if (!forceRefresh) {
-        const storedUser = localStorage.getItem('user');
-        const lastProfileFetch = localStorage.getItem('lastProfileFetch');
-        const cacheExpiry = 5 * 60 * 1000; // 5 minutes cache
-
-        if (storedUser && lastProfileFetch) {
-          const timeSinceLastFetch = Date.now() - parseInt(lastProfileFetch);
-
-          if (timeSinceLastFetch < cacheExpiry) {
-            try {
-              const user = JSON.parse(storedUser) as User;
-              this.appState.user = user;
-              console.log('Using cached user profile:', user.username);
-              return user;
-            } catch (parseError) {
-              console.warn('Failed to parse stored user data:', parseError);
-              // Clear corrupted data
-              localStorage.removeItem('user');
-              localStorage.removeItem('lastProfileFetch');
-            }
-          } else {
-            console.log('Cache expired, fetching fresh profile...');
-          }
-        } else {
-          console.log('No cached profile found, fetching from API...');
-        }
-      } else {
-        console.log('Force refresh requested, bypassing cache...');
-      }
-
-      // Get the auth token
       const token = this.getToken();
       if (!token) {
-        console.error('No authentication token found');
         throw new Error('No authentication token found');
       }
 
-      // Fallback or forced refresh: Make API call
-      console.log('Fetching user profile from API...');
-      const endpoint = role === 'manufacturer' ? '/manufacturer/profile' : '/customer/profile';
+      // Determine endpoint based on user role
+      const userRole = this.appState.user?.role || 'customer';
+      const endpoint = userRole === 'manufacturer' ? '/manufacturer/profile' : '/customer/profile';
 
       const response = await apiClient.get<ProfileResponse>(endpoint, {
         headers: {
@@ -341,41 +288,305 @@ async updateUserProfile(profileData: Partial<User>): Promise<User> {
         }
       });
 
-      if (response.status && response.data?.user) {
-        this.appState.user = response.data.user;
-
-        // Store the fresh data in localStorage with timestamp
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (response.status === 200 && response.data?.user) {
+        const userData = response.data.user;
+        
+        // Update localStorage and state
+        localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('lastProfileFetch', Date.now().toString());
+        
+        this.updateState({
+          user: userData,
+          loading: false,
+          error: null
+        });
 
-        console.log('User profile loaded from API:', response.data.user.username);
-        return response.data.user;
+        console.log('Profile loaded:', userData.username);
+        return userData;
       } else {
         throw new Error('Failed to load profile');
       }
-
     } catch (error: any) {
-      console.error('Profile loading error:', error);
-
-      // Handle different types of errors
-      if (error.response?.status === 401 || error.status === 401) {
-        console.log('Authentication failed (401), clearing session...');
-        this.logout();
-        return null;
+      const errorMessage = this.handleApiError(error, 'Failed to load profile');
+      
+      if (error.response?.status === 401) {
+        this.clearSession();
+        throw new Error('Authentication failed');
       }
-
-      if (error.response?.status === 403) {
-        console.log('Access forbidden (403), insufficient permissions');
-        throw new Error('Access denied. You do not have permission to access this resource.');
-      }
-
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        console.log('Network error, server might be unavailable');
-        throw new Error('Unable to connect to server. Please check your connection and try again.');
-      }
-
-      throw error;
+      
+      this.updateState({ loading: false, error: errorMessage });
+      throw new Error(errorMessage);
     }
+  }
+
+  // UNIFIED PROFILE UPDATE - Main update method supporting both formats
+  async updateUserProfile(updateData: ProfileUpdateRequest | Partial<User>): Promise<User> {
+    if (!this.checkAuthStatus()) {
+      throw new Error('User not authenticated');
+    }
+
+    this.updateState({ loading: true, error: null });
+
+    try {
+      const token = this.getToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Determine endpoint based on user role
+      const userRole = this.appState.user?.role || 'manufacturer';
+      const endpoint = userRole === 'manufacturer' ? '/manufacturer/profile' : '/profile';
+
+      // Convert legacy format to new format if needed
+      const requestData = this.normalizeUpdateData(updateData);
+
+      console.log('Sending profile update:', requestData);
+
+      let response: any;
+      
+      try {
+        // Try PUT first
+        response = await apiClient.put<ProfileResponse>(endpoint, requestData, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch (error: any) {
+        if (error.response?.status === 405) {
+          // Try PATCH as fallback
+          console.log('PUT not supported, trying PATCH...');
+          response = await apiClient.patch<ProfileResponse>(endpoint, requestData, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        } else {
+          throw error;
+        }
+      }
+      
+      if (response.status === 200 && response.data?.user) {
+        const updatedUser = response.data.user;
+        
+        // Update localStorage and state
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        localStorage.setItem('lastProfileFetch', Date.now().toString());
+        
+        this.updateState({
+          user: updatedUser,
+          loading: false,
+          error: null
+        });
+
+        console.log('Profile update response:', response.data);
+        return updatedUser;
+      } else {
+        throw new Error(response.data?.error || 'Profile update failed');
+      }
+    } catch (error: any) {
+      const errorMessage = this.handleApiError(error, 'Profile update failed');
+      
+      if (error.response?.status === 401) {
+        this.clearSession();
+        throw new Error('Authentication failed');
+      }
+      
+      this.updateState({ loading: false, error: errorMessage });
+      throw new Error(errorMessage);
+    }
+  }
+
+  // Helper method to normalize update data to the new format
+  private normalizeUpdateData(updateData: ProfileUpdateRequest | Partial<User>): ProfileUpdateRequest {
+    // If it's already in the new format, return as-is
+    if ('email_operations' in updateData || 'wallet_operations' in updateData || 'direct_updates' in updateData) {
+      return updateData as ProfileUpdateRequest;
+    }
+
+    // Convert legacy format
+    const normalized: ProfileUpdateRequest = { direct_updates: {} };
+    
+    const legacyData = updateData as Partial<User>;
+    
+    if (legacyData.emails) {
+      normalized.direct_updates!.emails = legacyData.emails;
+    }
+    if (legacyData.wallet_addresses) {
+      normalized.direct_updates!.wallet_addresses = legacyData.wallet_addresses;
+    }
+    if (legacyData.primary_email) {
+      normalized.direct_updates!.primary_email = legacyData.primary_email;
+    }
+    if (legacyData.primary_wallet) {
+      normalized.direct_updates!.primary_wallet = legacyData.primary_wallet;
+    }
+    if (legacyData.current_company_name) {
+      normalized.company_name = legacyData.current_company_name;
+    }
+
+    // Handle other direct updates
+    Object.keys(legacyData).forEach(key => {
+      if (!['emails', 'wallet_addresses', 'primary_email', 'primary_wallet', 'current_company_name'].includes(key)) {
+        normalized.direct_updates![key] = (legacyData as any)[key];
+      }
+    });
+
+    return normalized;
+  }
+
+  // CONVENIENCE METHODS for specific operations
+  async addEmail(email: string): Promise<User> {
+    return this.updateUserProfile({
+      email_operations: [{ operation: 'add', email }]
+    });
+  }
+
+  async removeEmail(email: string): Promise<User> {
+    return this.updateUserProfile({
+      email_operations: [{ operation: 'remove', email }]
+    });
+  }
+
+  async setPrimaryEmail(email: string): Promise<User> {
+    return this.updateUserProfile({
+      direct_updates: { primary_email: email }
+    });
+  }
+
+  async addWallet(wallet_address: string): Promise<User> {
+    return this.updateUserProfile({
+      wallet_operations: [{ operation: 'add', wallet_address }]
+    });
+  }
+
+  async removeWallet(wallet_address: string): Promise<User> {
+    return this.updateUserProfile({
+      wallet_operations: [{ operation: 'remove', wallet_address }]
+    });
+  }
+
+  async setPrimaryWallet(wallet_address: string): Promise<User> {
+    return this.updateUserProfile({
+      direct_updates: { primary_wallet: wallet_address }
+    });
+  }
+
+  async updateCompanyName(company_name: string): Promise<User> {
+    return this.updateUserProfile({
+      company_name
+    });
+  }
+
+  // BATCH UPDATE - Multiple operations at once
+  async batchUpdateProfile(operations: {
+    emails?: EmailOperation[];
+    wallets?: WalletOperation[];
+    company?: string;
+    directUpdates?: { [key: string]: any };
+  }): Promise<User> {
+    const updateRequest: ProfileUpdateRequest = {};
+    
+    if (operations.emails?.length) {
+      updateRequest.email_operations = operations.emails;
+    }
+    
+    if (operations.wallets?.length) {
+      updateRequest.wallet_operations = operations.wallets;
+    }
+    
+    if (operations.company) {
+      updateRequest.company_name = operations.company;
+    }
+
+    if (operations.directUpdates) {
+      updateRequest.direct_updates = operations.directUpdates;
+    }
+    
+    return this.updateUserProfile(updateRequest);
+  }
+
+  // QUICK UPDATE - Single field changes
+  async quickUpdate(field: string, value: any): Promise<User> {
+    try {
+      // Try the quick update endpoint first
+      const response = await apiClient.post('/manufacturer/profile/quick-update', {
+        field,
+        value
+      }, {
+        headers: {
+          'Authorization': `Bearer ${this.getToken()}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data?.user) {
+        const updatedUser = response.data.user;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        this.updateState({ user: updatedUser });
+        return updatedUser;
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      // Fallback to unified endpoint
+      const directUpdates: any = {};
+      directUpdates[field] = value;
+      
+      return this.updateUserProfile({
+        direct_updates: directUpdates
+      });
+    }
+  }
+
+  // EMAIL VERIFICATION
+  async verifyEmail(token: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiClient.post<EmailVerificationResponse>('/auth/verify-email', { token });
+      return {
+        success: response.status === 200,
+        message: response.data.message || 'Email verified successfully!'
+      };
+    } catch (error: any) {
+      throw new Error(this.handleApiError(error, 'Email verification failed'));
+    }
+  }
+
+  // RESEND VERIFICATION EMAIL
+  async resendVerificationEmail(email: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiClient.post('/auth/resend-verification', {
+        email: email.trim().toLowerCase()
+      });
+      return {
+        success: response.status === 200,
+        message: response.data.message || 'Verification email sent successfully!'
+      };
+    } catch (error: any) {
+      throw new Error(this.handleApiError(error, 'Failed to resend verification email'));
+    }
+  }
+
+  // LOGOUT
+  logout(): void {
+    this.clearSession();
+  }
+
+  // Clear all session data
+  private clearSession(): void {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    localStorage.removeItem('user_role');
+    localStorage.removeItem('lastProfileFetch');
+    
+    this.updateState({
+      user: {} as User,
+      isAuthenticated: false,
+      loading: false,
+      error: null
+    });
   }
 
   // Helper method to get token
@@ -383,38 +594,46 @@ async updateUserProfile(profileData: Partial<User>): Promise<User> {
     return localStorage.getItem('authToken');
   }
 
-  // Method to clear cached profile (call this on logout)
-  clearProfileCache(): void {
-    localStorage.removeItem('user');
-    localStorage.removeItem('lastProfileFetch');
+  // Error handling
+  private handleApiError(error: any, defaultMessage: string): string {
+    if (error.response) {
+      const status = error.response.status;
+      const serverMessage = error.response.data?.message || error.response.data?.error;
+
+      switch (status) {
+        case 400: return serverMessage || 'Invalid request';
+        case 401: return serverMessage || 'Invalid credentials';
+        case 403: return serverMessage || 'Access denied';
+        case 404: return 'Service not found';
+        case 500: return serverMessage || 'Server error. Please try again later.';
+        default: return serverMessage || `${defaultMessage} (${status})`;
+      }
+    } else if (error.request) {
+      return 'Unable to connect to server. Please check your internet connection.';
+    } else if (error.code === 'ERR_NETWORK') {
+      return 'Network error. Please check your connection and try again.';
+    } else {
+      return error.message || defaultMessage;
+    }
   }
 
-  // Enhanced logout method
-  logout(): void {
-    localStorage.removeItem('authToken');
-    this.clearProfileCache();
-    this.appState.user = null;
-    this.appState.isAuthenticated = false;
-    // Redirect to login or handle as needed
-  }
-
-  // Method to refresh profile (useful for manual refresh)
-  async refreshUserProfile(role?: string): Promise<User | null> {
-    return this.loadUserProfile(role, true);
-  }
-
-   
-  // Utility methods matching main.js patterns
+  // Utility methods
   formatWalletAddress(address: string): string {
     if (!address) return 'No wallet';
-    if (address.length > 20) {
-      return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
-    }
-    return address;
+    return address.length > 20 
+      ? `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
+      : address;
   }
 
   isValidEthereumAddress(address: string): boolean {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
+  }
+
+  generateSerialNumber(): string {
+    const prefix = 'ABCV';
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefix}${timestamp}${random}`;
   }
 
   // Verification status helpers
@@ -430,51 +649,16 @@ async updateUserProfile(profileData: Partial<User>): Promise<User> {
     return this.appState.user?.wallet_verification_status ?? null;
   }
 
-  // Generate random serial number (from main.js)
-  generateSerialNumber(): string {
-    const prefix = 'TEST';
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `${prefix}${timestamp}${random}`;
-  }
-
-  // Get redirect URL based on user role (from main.js)
   getRedirectUrl(): string {
     if (!this.appState.user) return '/';
-
     switch (this.appState.user.role) {
-      case 'manufacturer':
-        return '/dashboard';
-      case 'developer':
-        return '/developer';
-      default:
-        return '/';
+      case 'manufacturer': return '/dashboard';
+      case 'developer': return '/developer';
+      default: return '/';
     }
   }
-
-  // Initialize app (equivalent to initializeApp from main.js)
-  initializeApp(): void {
-    // Check if user is logged in
-    this.checkAuthStatus();
-
-    // Set up axios-like defaults for apiClient if needed
-    // This would be handled by your apiClient automatically
-  }
-
 }
-// Create singleton instance
+
+// Create and export singleton instance
 const authService = AuthService.getInstance();
 export default authService;
-
-// Export individual functions for easier migration from main.js
-export const checkAuthStatus = () => authService.checkAuthStatus();
-export const login = (email: string, password: string) => authService.login(email, password);
-export const signup = (username: string, email: string, password: string, role: string, walletAddress?: string, companyName?: string) =>
-  authService.signup(username, email, password, role, walletAddress, companyName);
-export const logout = () => authService.logout();
-export const loadUserProfile = (role?: string) => authService.loadUserProfile(role);
-export const verifyEmail = (token: string) => authService.verifyEmail(token);
-export const resendVerificationEmail = (email: string) => authService.resendVerificationEmail(email);
-export const isValidEthereumAddress = (address: string) => authService.isValidEthereumAddress(address);
-export const formatWalletAddress = (address: string) => authService.formatWalletAddress(address);
-export const generateSerialNumber = () => authService.generateSerialNumber();

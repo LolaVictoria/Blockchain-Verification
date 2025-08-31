@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useVerification } from '../hooks/useVerification';
 import type { VerificationResult, BatchVerificationResult, SampleData, OwnershipRecord } from '../../src/utils/VerificationService';
 import { copyToClipboard } from '../utils/helper';
-import { CopyableText } from '../utils/CopyToClipboard';
+import { OwnershipHistoryModal } from '../components/manufacturerDashboard/ownershipTransferHistory';
+import VerificationResultCard from '../components/manufacturerDashboard/verificationResultCard';
 // Loading Spinner Component
 const LoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
   <div className="flex flex-col items-center p-8 text-gray-500">
@@ -12,24 +13,7 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
   </div>
 );
 
-// Result Card Component
-const ResultCard: React.FC<{
-  type: 'authentic' | 'counterfeit' | 'not-found' | 'error';
-  children: React.ReactNode;
- }> = ({ type, children }) => {
-  const styles = {
-    authentic: 'bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 shadow-md',
-    counterfeit: 'bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 shadow-md',
-    'not-found': 'bg-gradient-to-r from-gray-50 to-slate-50 border-l-4 border-gray-400 shadow-md',
-    error: 'bg-gradient-to-r from-red-50 to-pink-50 border-l-4 border-red-500 shadow-md'
-  };
 
-  return (
-    <div className={`p-6 rounded-xl my-4 ${styles[type]}`}>
-      {children}
-    </div>
-  );
-};
 
 // Main Verification Page Component
 const VerifyPage: React.FC = () => {
@@ -165,7 +149,7 @@ const VerifyPage: React.FC = () => {
       : '';
 
     return (
-      <ResultCard type={resultType}>
+      <VerificationResultCard type={resultType}>
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800">{statusIcon} {statusText}</h3>
           {verificationBadge && (
@@ -266,7 +250,7 @@ const VerifyPage: React.FC = () => {
             </button>
           </div>
         )}
-      </ResultCard>
+      </VerificationResultCard>
     );
   };
 
@@ -369,11 +353,11 @@ const VerifyPage: React.FC = () => {
               {/* Results */}
               {isLoading && <LoadingSpinner message="Verifying device authenticity..." />}
               {error && (
-                <ResultCard type="error">
+                <VerificationResultCard type="error">
                   <h3 className="text-xl font-bold mb-3">Verification Error</h3>
                   <p className="mb-2">Failed to verify device. Please try again.</p>
                   <p className="text-sm text-gray-600 bg-gray-100 p-3 rounded-lg font-mono">Error: {error}</p>
-                </ResultCard>
+                </VerificationResultCard>
               )}
               {renderVerificationResult()}
             </div>
@@ -430,11 +414,11 @@ const VerifyPage: React.FC = () => {
               {/* Batch Results */}
               {isLoading && <LoadingSpinner message="Verifying devices..." />}
               {error && (
-                <ResultCard type="error">
+                <VerificationResultCard type="error">
                   <h3 className="text-xl font-bold mb-3">Batch Verification Failed</h3>
                   <p className="mb-2">Failed to verify devices. Please try again.</p>
                   <p className="text-sm text-gray-600 bg-gray-100 p-3 rounded-lg font-mono">Error: {error}</p>
-                </ResultCard>
+                </VerificationResultCard>
               )}
               {batchResults && (
                 <div className="mt-8">
@@ -520,11 +504,11 @@ const VerifyPage: React.FC = () => {
 
               {isLoading && <LoadingSpinner message="Loading sample data..." />}
               {error && (
-                <ResultCard type="error">
+                <VerificationResultCard type="error">
                   <h3 className="text-xl font-bold mb-3">Error Loading Sample Data</h3>
                   <p className="mb-2">Please check if the backend server is running.</p>
                   <p className="text-sm text-gray-600 bg-gray-100 p-3 rounded-lg font-mono">Error: {error}</p>
-                </ResultCard>
+                </VerificationResultCard>
               )}
               
               {sampleData && (
@@ -624,64 +608,17 @@ const VerifyPage: React.FC = () => {
 
       {/* Ownership History Modal */}
       {ownershipModal.open && (
-        <div className="fixed inset-0 bg-white bg-opacity-50 z-50  p-4">
-          <div className="bg-white rounded-2xl  h-[95vh] overflow-y-auto shadow-2xl">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-800">Ownership History</h3>
-              <button
-                onClick={() => setOwnershipModal(prev => ({ ...prev, open: false }))}
-                className="text-gray-400 hover:text-gray-600 text-2xl font-bold p-2 hover:bg-gray-100 rounded-full transition-all"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="p-6">
-              {ownershipModal.loading ? (
-                <LoadingSpinner message="Loading ownership history..." />
-              ) : ownershipModal.history.length > 0 ? (
-                <div>
-                  <h4 className="font-bold mb-4 text-gray-800">Serial Number: {ownershipModal.serialNumber}</h4>
-                  <div className="space-y-4">
-                    {ownershipModal.history.map((record, index) => {
-                      const date = new Date(record.transfer_date || record.date || '').toLocaleDateString();
-                      return (
-                        <div key={index} className="relative pl-8 pb-4">
-                          <div className="absolute left-0 top-2 w-3 h-3 bg-blue-600 rounded-full"></div>
-                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                            <p className="mb-2"><strong>From:</strong> {record.from || record.previous_owner || '_'}</p>
-                            <p className="mb-2"><strong>To:</strong> {record.to || record.new_owner || 'Unknown'}</p>
-                            <p className="mb-2"><strong>Date:</strong> {date}</p>
-                            <p className="mb-2"><strong>Note:</strong> {record.transfer_reason || record.reason || 'Ownership Transfer'}</p>
-                            {record.transaction_hash && (
-                              <p>
-                                <strong>Transaction:</strong>{' '}
-                                <CopyableText
-                                  text={record.transaction_hash}
-                                  className="text-xs bg-gray-200 px-2 py-1 rounded font-mono border border-transparent"
-                                  successMessage="Transaction Hash to clipboard!"
-                                />
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <ResultCard type="not-found">
-                  <h4 className="font-bold">No Ownership History</h4>
-                  <p>No ownership transfers found for this device.</p>
-                  <p>This device may still be with the original manufacturer.</p>
-                </ResultCard>
-              )}
-            </div>
-          </div>
-        </div>
+        <OwnershipHistoryModal
+            isOpen={ownershipModal.open}
+            onClose={() => setOwnershipModal(prev => ({ ...prev, open: false }))}
+            loading={ownershipModal.loading}
+            ownershipModal={ownershipModal}
+            serialNumber={ownershipModal.serialNumber}
+            ownershipHistory={ownershipModal.history}
+          />
       )}
     </div>
   );
 };
 
-export default VerifyPage;
+export default VerifyPage

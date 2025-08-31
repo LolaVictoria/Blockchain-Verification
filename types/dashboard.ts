@@ -13,7 +13,8 @@ export interface OwnershipHistoryEntry {
 export interface Product {
   _id?: string;
   serial_number: string;
-  product_name: string;
+  product_name?: string; // Made optional since you're using 'name'
+  name?: string; // Added this field since your data uses 'name'
   brand: string;
   model: string;
   device_type: string;
@@ -23,14 +24,25 @@ export interface Product {
   color?: string;
   batch_number?: string;
   manufacturer_id: string;
-  manufacturer_address: string;
+  manufacturer_name?: string; // Added from your data
+  manufacturer_address?: string; // Made optional since it might not always be present
   manufacturer_wallet: string;
-  current_owner: string;
-  transaction_hash: string;
+  wallet_address?: string; // Added from your data
+  current_owner?: string; // Made optional since we derive this from ownership_history
+  transaction_hash?: string; // Made optional since you might use specification_hash instead
+  specification_hash?: string; // Added from your data
+  registration_type: string;
   registered_at: string;
+  created_at?: string; // Added from your data
   updated_at: string;
-  verified: boolean;
+  verified?: boolean; // Made optional since you use blockchain_verified
+  blockchain_verified?: boolean; // Added from your data
   ownership_history: OwnershipHistoryEntry[];
+  
+  // Blockchain-related fields from your data
+  block_number?: number;
+  gas_price?: string;
+  gas_used?: number;
 }
 
 export interface DashboardStats {

@@ -1,13 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Package2, ExternalLink, MoreVertical, ArrowRightLeft, Eye, History,  Copy } from 'lucide-react';
+import { Package2, ExternalLink, MoreVertical, ArrowRightLeft, Eye, History, Copy } from 'lucide-react';
 import type { Product } from '../../../types/dashboard';
 
 interface ProductCardProps {
   product: Product;
   onTransferOwnership: (product: Product) => void;
+  onViewDetails: (product: Product) => void;
+  onViewOwnershipHistory: (product: Product) => void; 
+ 
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onTransferOwnership }) => {
+export const ProductCard: React.FC<ProductCardProps> = ({ 
+  product, 
+  onTransferOwnership, 
+  onViewDetails,
+  onViewOwnershipHistory 
+}) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -34,14 +42,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onTransferOwn
   };
 
   const handleViewDetails = () => {
-    // Implement view details functionality
-    console.log('View details for:', product.serial_number);
+    onViewDetails(product);
     setShowMenu(false);
   };
 
   const handleViewHistory = () => {
-    // Implement view ownership history functionality
-    console.log('View history for:', product.serial_number);
+    onViewOwnershipHistory(product); // Use the passed handler
     setShowMenu(false);
   };
 
@@ -87,16 +93,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onTransferOwn
               Ownership History
             </button>
             
-
-          {/* <Link to="/verify">
-            <button
-              onClick={handleVerifyAuthenticity}
-              className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <Shield className="h-4 w-4" />
-              Verify Authenticity
-            </button>
-           </Link> */}
+            {/* <Link to="/verify">
+              <button
+                onClick={handleVerifyAuthenticity}
+                className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                Verify Authenticity
+              </button>
+             </Link> */}
 
             <button
               onClick={handleCopySerialNumber}
@@ -126,7 +131,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onTransferOwn
 
       <div className="text-center">
         <h4 className="font-semibold text-lg text-gray-900 mb-2">
-          {product.product_name || `${product.brand} ${product.model}`}
+          {product.name || product.product_name || `${product.brand} ${product.model}`}
         </h4>
         <div className="space-y-2 mb-4">
           <p className="text-sm text-gray-600">
@@ -140,9 +145,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onTransferOwn
           )}
         </div>
 
-        {product.transaction_hash && (
+        {(product.specification_hash || product.transaction_hash) && (
           <a
-            href={`https://sepolia.etherscan.io/tx/${product.transaction_hash}`}
+            href={`https://sepolia.etherscan.io/tx/${product.specification_hash || product.transaction_hash}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"

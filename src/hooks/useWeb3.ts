@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Web3 from 'web3';
 import type { Web3State, BlockchainConfig } from '../../types/dashboard';
 import AunthenticationContract from '../../contract/ElectronicsAuthentication-frontend.json'
+
 declare global {
     interface Window {
         ethereum?: any;
@@ -21,11 +22,37 @@ export const useWeb3 = () => {
 
     const [connectionStatus, setConnectionStatus] = useState<{
         message: string;
-        type: 'checking' | 'connected' | 'disconnected' | 'unauthorized';
+        type: 'checking' | 'connected' | 'disconnected' | 'unauthorized' | 'error';
     }>({
         message: 'Checking blockchain connection...',
         type: 'checking'
     });
+
+    // Validate environment variables
+    const validateEnvironment = useCallback(() => {
+        const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+        const chainId = import.meta.env.VITE_CHAIN_ID;
+
+        if (!contractAddress) {
+            console.error('CONTRACT_ADDRESS not found in environment variables');
+            setConnectionStatus({
+                message: 'Contract address not configured',
+                type: 'error'
+            });
+            return false;
+        }
+
+        if (!chainId) {
+            console.error('CHAIN_ID not found in environment variables');
+            setConnectionStatus({
+                message: 'Chain ID not configured',
+                type: 'error'
+            });
+            return false;
+        }
+
+        return true;
+    }, []);
 
     // Helper function to check manufacturer authorization
     const checkManufacturerAuthorization = useCallback(async (contract: any, account: string): Promise<boolean> => {
@@ -39,6 +66,11 @@ export const useWeb3 = () => {
     }, []);
 
     const checkWalletConnection = useCallback(async () => {
+        // First validate environment
+        if (!validateEnvironment()) {
+            return;
+        }
+
         if (typeof window.ethereum !== 'undefined') {
             try {
                 const web3 = new Web3(window.ethereum);
@@ -46,9 +78,16 @@ export const useWeb3 = () => {
 
                 if (accounts.length > 0) {
                     const account = accounts[0];
+                    const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+                    
+                    // Double-check contract address before creating contract
+                    if (!contractAddress) {
+                        throw new Error('Contract address is not defined');
+                    }
+
                     const contract = new web3.eth.Contract(
                         AunthenticationContract,
-                        import.meta.env.CONTRACT_ADDRESS
+                        contractAddress
                     );
 
                     // Check authorization status
@@ -89,8 +128,8 @@ export const useWeb3 = () => {
             } catch (error) {
                 console.error('Error checking wallet:', error);
                 setConnectionStatus({
-                    message: 'Error connecting to wallet',
-                    type: 'disconnected'
+                    message: `Error connecting to wallet: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    type: 'error'
                 });
             }
         } else {
@@ -99,9 +138,16 @@ export const useWeb3 = () => {
                 type: 'disconnected'
             });
         }
-    }, [checkManufacturerAuthorization]);
+    }, [checkManufacturerAuthorization, validateEnvironment]);
 
     const connectWallet = useCallback(async () => {
+        if (!validateEnvironment()) {
+            return {
+                success: false,
+                message: 'Environment not properly configured'
+            };
+        }
+
         if (typeof window.ethereum !== 'undefined') {
             try {
                 const accounts = await window.ethereum.request({
@@ -125,15 +171,20 @@ export const useWeb3 = () => {
                 message: 'Please install MetaMask!'
             };
         }
-    }, [checkWalletConnection]);
+    }, [checkWalletConnection, validateEnvironment]);
 
     const switchToSepolia = useCallback(async () => {
         if (!window.ethereum) return { success: false, message: 'MetaMask not installed' };
 
+        const chainId = import.meta.env.VITE_CHAIN_ID;
+        if (!chainId) {
+            return { success: false, message: 'Chain ID not configured' };
+        }
+
         try {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: `0x${import.meta.env.CHAIN_ID.toString(16)}` }],
+                params: [{ chainId: `0x${parseInt(chainId).toString(16)}` }],
             });
             return { success: true, message: 'Switched to Sepolia network' };
         } catch (switchError: any) {
@@ -142,7 +193,7 @@ export const useWeb3 = () => {
                     await window.ethereum.request({
                         method: 'wallet_addEthereumChain',
                         params: [{
-                            chainId: `0x${import.meta.env.CHAIN_ID.toString(16)}`,
+                            chainId: `0x${parseInt(chainId).toString(16)}`,
                             chainName: 'Sepolia Test Network',
                             nativeCurrency: {
                                 name: 'ETH',

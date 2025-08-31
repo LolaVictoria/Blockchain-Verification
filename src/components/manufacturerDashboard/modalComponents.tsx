@@ -50,7 +50,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-white  flex items-center justify-center p-4 z-50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full animate-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-xl font-semibold text-gray-900">
@@ -159,7 +159,7 @@ export const AlertToast: React.FC<AlertToastProps> = ({
         <p className="flex-1 font-medium">{message}</p>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-black hover:bg-opacity-20 rounded transition-colors"
+          className="p-1 hover:bg-white hover:bg-opacity-20 rounded transition-colors"
         >
           <X className="h-4 w-4" />
         </button>

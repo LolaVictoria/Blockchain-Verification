@@ -13,11 +13,10 @@ import { ProductRegistrationForm } from '../components/manufacturerDashboard/pro
 import { TransferOwnershipForm } from '../components/manufacturerDashboard/transferOwnershipForm';
 import { QuickActions, TransactionModal } from '../components/manufacturerDashboard/modalComponents';
 import { AlertToast } from '../components/manufacturerDashboard/modalComponents';
-import { useProfile } from '../hooks/useProfile';
 import { DashboardNavbar } from '../components/manufacturerDashboard/mdNavbar';
 import { useNavigate } from 'react-router-dom';
 import EditProfile from '../components/manufacturerDashboard/editProfile';
-import useAuth from '../hooks/useAuth';
+import { useAuthContext } from '../../context/AuthContext';
 
 const ManufacturerDashboard: React.FC = () => {
   const [selectedProductForTransfer, setSelectedProductForTransfer] = useState<Product | null>(null);
@@ -29,10 +28,9 @@ const ManufacturerDashboard: React.FC = () => {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showManufacturerProduct, setShowManufacturerProduct] = useState(false)
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user,  refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
   console.log(user)
-  const {loading: profileLoading, error: profileError, refreshProfile } = useProfile('manufacturer');
-  
+
   const { 
     stats, 
     products, 
@@ -352,7 +350,7 @@ const ManufacturerDashboard: React.FC = () => {
               Manufacturer Dashboard
             </h1>
             <p className="mt-2 text-gray-600">
-              Welcome back, {user.username}! Manage your products and track their lifecycle.
+              Welcome back, <span className="font-semibold">{user.current_company_name}</span>! Manage your products and track their lifecycle.
             </p>
           </div>
 
