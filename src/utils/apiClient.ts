@@ -1,7 +1,14 @@
 import axios, { type AxiosResponse, AxiosError, type AxiosRequestConfig } from 'axios';
 
-const BASE_URL = import.meta.env.VITE_BASE_URL || 'https://product-verification-blockchain.onrender.com';
+// Update the BASE_URL to use the proxy in development
+const getBaseURL = () => {
+  if (import.meta.env.DEV) {
+    return '/api'; // Use proxy in development
+  }
+  return import.meta.env.VITE_BASE_URL || 'https://product-verification-blockchain.onrender.com';
+};
 
+const BASE_URL = getBaseURL();
 // Your original interface - preserved exactly as is
 interface ApiResponse {
   data: any;
@@ -24,9 +31,8 @@ export interface ApiError {
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  // timeout: 10000,
-  withCredentials: false, // CRITICAL: This enables credentials/cookies - true
-  // withCredentials: false, (Set to true if you need cookies/auth)
+  timeout: 10000, 
+  withCredentials: false, 
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',

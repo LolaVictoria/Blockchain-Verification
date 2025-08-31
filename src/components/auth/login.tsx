@@ -1,5 +1,5 @@
 // Login Component
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Shield, Eye, EyeOff, LogIn } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,17 +11,26 @@ const LoginScreen: React.FC = () => {
   const [error, setError] = useState('');
   const { login, loading, user } = useAuth();
   const navigate = useNavigate();
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    const success = await login(email, password);
-    if (!success) {
-      setError('Invalid credentials. Please try again.');
-    } else {
-      navigate(`/dashboard/${user.role}/${user.id}`);
-    }
-  };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
+  const success = await login(email, password);
+  if (!success) {
+    setError('Invalid credentials. Please try again.');
+  } else {
+    setLoginSuccess(true); // Trigger useEffect
+  }
+};
+
+// Navigate when login is successful
+useEffect(() => {
+  if (loginSuccess && user) {
+    navigate(`/dashboard/${user.role}/${user.id}`);
+  }
+}, [loginSuccess, user, navigate]);
 
 
   return (
