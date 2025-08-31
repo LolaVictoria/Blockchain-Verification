@@ -1,1 +1,2 @@
 1.  showalert
+2. redundancy for - getOwnershipHistory function
