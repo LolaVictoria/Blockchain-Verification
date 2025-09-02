@@ -9,7 +9,8 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const { login, loading, user } = useAuth();
+  const [loading, setLoading] = useState(false)
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [loginSuccess, setLoginSuccess] = useState(false);
 
@@ -17,7 +18,7 @@ const LoginScreen: React.FC = () => {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError('');
-  
+  setLoading(true)
   try {
     await login(email, password);
     setLoginSuccess(true);
@@ -26,6 +27,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
     setError(errorMessage);
   }
+  setLoading(false)
 };
 
 // Navigate when login is successful
