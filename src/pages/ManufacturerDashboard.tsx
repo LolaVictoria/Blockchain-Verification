@@ -1,67 +1,62 @@
 // pages/ManufacturerDashboard.tsx
 import React, { useState, useEffect } from 'react';
-import type { Product } from "../../types/dashboard"
+// import type { Product } from "../../types/dashboard"
 import { useWeb3 } from '../hooks/useWeb3';
 import { useDashboard } from '../hooks/useDashboard';
 import { useAlert } from '../hooks/useAlert';
 import { useTransactionModal } from '../hooks/useTransactionalModal';
 import { ConnectionStatus } from '../components/manufacturerDashboard/connectionStatus';
 import { DashboardStats } from '../components/manufacturerDashboard/dashboardStats';
-import { ProductGrid } from '../components/manufacturerDashboard/productGrid';
-// import { QuickActions } from '../components/manufacturerDashboard/modalComponents';
 import { ProductRegistrationForm } from '../components/manufacturerDashboard/productRegistrationForm';
-import { TransferOwnershipForm } from '../components/manufacturerDashboard/transferOwnershipForm';
-import { QuickActions, TransactionModal } from '../components/manufacturerDashboard/modalComponents';
-import { AlertToast } from '../components/manufacturerDashboard/modalComponents';
+// import { TransferOwnershipForm } from '../components/manufacturerDashboard/transferOwnershipForm';
+import { QuickActions } from '../components/manufacturerDashboard/modalComponents';
+// import { AlertToast } from '../components/manufacturerDashboard/modalComponents';
 import { DashboardNavbar } from '../components/manufacturerDashboard/mdNavbar';
-import { useNavigate } from 'react-router-dom';
 import EditProfile from '../components/manufacturerDashboard/editProfile';
 import { useAuthContext } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ManufacturerDashboard: React.FC = () => {
-  const [selectedProductForTransfer, setSelectedProductForTransfer] = useState<Product | null>(null);
-  
+  const navigate = useNavigate();
+
   // Form visibility states
   const [showProductForm, setShowProductForm] = useState(false);
-  const [showTransferForm, setShowTransferForm] = useState(false);
+  // const [showTransferForm, setShowTransferForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showManufacturerProduct, setShowManufacturerProduct] = useState(false)
-  const navigate = useNavigate()
-  const { user,  refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
-
+  const { user, refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
 
   const { 
     stats, 
-    products, 
-    // allProducts,
-    loading: productsLoading, 
     statsLoading, 
-    filter, 
-    setFilter,
     registerProduct,
-    transferOwnership,
+    // transferOwnership,
     refreshDashboard 
   } = useDashboard();  
-  const { alert, showAlert, hideAlert } = useAlert();
-  const { transaction, showTransactionModal, updateTransactionStatus, hideTransactionModal } = useTransactionModal();
+  const { 
+    // alert, 
+    showAlert, 
+    // hideAlert 
+  } = useAlert();
+  const { 
+    // transaction, 
+    showTransactionModal, updateTransactionStatus, hideTransactionModal } = useTransactionModal();
   const web3 = useWeb3();
   
-  const handleProductTransferClick = (product: Product) => {
-    setSelectedProductForTransfer(product);
-    setShowTransferForm(true);
-  };
- 
- const handleProductDisplay: () => void = () => {
-  setShowManufacturerProduct(!showManufacturerProduct)
- }
-  // Check authentication and user role
- // Handle profile errors
+  
+  // Handle profile errors
   useEffect(() => {
     if (profileError) {
       showAlert(`Profile Error: ${profileError}`, 'error');
     }
   }, [profileError, showAlert]);
+
+  // Handle role-based navigation
+  useEffect(() => {
+    if (user && user.role !== 'manufacturer') {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   // Handle product registration
   const handleProductSubmit = async (productData: any) => {
@@ -185,121 +180,122 @@ const ManufacturerDashboard: React.FC = () => {
   };
 
   // Handle ownership transfer
-  const handleOwnershipTransfer = async (transferData: any) => {
-    if (!web3.isConnected || !web3.account) {
-      showAlert('Please connect your MetaMask wallet first!', 'error');
-      return;
-    }
+  // const handleOwnershipTransfer = async (transferData: any) => {
+  //   if (!web3.isConnected || !web3.account) {
+  //     showAlert('Please connect your MetaMask wallet first!', 'error');
+  //     return;
+  //   }
 
-    setFormLoading(true);
-    showTransactionModal('Preparing ownership transfer...');
+  //   setFormLoading(true);
+  //   showTransactionModal('Preparing ownership transfer...');
 
-    try {
-      updateTransactionStatus('Validating recipient address...');
+  //   try {
+  //     updateTransactionStatus('Validating recipient address...');
 
-      // Validate recipient address
-      if (!web3.web3.utils.isAddress(transferData.newOwner)) {
-        throw new Error('Invalid recipient address');
-      }
+  //     // Validate recipient address
+  //     if (!web3.web3.utils.isAddress(transferData.newOwner)) {
+  //       throw new Error('Invalid recipient address');
+  //     }
 
-      updateTransactionStatus('Checking device ownership...');
+  //     updateTransactionStatus('Checking device ownership...');
 
-      // Check if user owns the device
-      const deviceInfo = await web3.contract.methods.getDeviceInfo(transferData.serialNumber).call();
-      if (deviceInfo.currentOwner.toLowerCase() !== web3.account.toLowerCase()) {
-        throw new Error('You do not own this device');
-      }
+  //     // Check if user owns the device
+  //     const deviceInfo = await web3.contract.methods.getDeviceInfo(transferData.serialNumber).call();
+  //     if (deviceInfo.currentOwner.toLowerCase() !== web3.account.toLowerCase()) {
+  //       throw new Error('You do not own this device');
+  //     }
 
-      updateTransactionStatus('Preparing blockchain transaction...');
+  //     updateTransactionStatus('Preparing blockchain transaction...');
 
-      // Estimate gas
-      const gasEstimate = await web3.contract.methods.transferOwnership(
-        transferData.serialNumber,
-        transferData.newOwner
-      ).estimateGas({ from: web3.account });
+  //     // Estimate gas
+  //     const gasEstimate = await web3.contract.methods.transferOwnership(
+  //       transferData.serialNumber,
+  //       transferData.newOwner
+  //     ).estimateGas({ from: web3.account });
 
-      const gasPrice = web3.web3.utils.toWei('2', 'gwei');
-      const gasLimit = Math.floor(gasEstimate * 1.2);
+  //     const gasPrice = web3.web3.utils.toWei('2', 'gwei');
+  //     const gasLimit = Math.floor(gasEstimate * 1.2);
 
-      updateTransactionStatus('Sending blockchain transaction...');
+  //     updateTransactionStatus('Sending blockchain transaction...');
 
-      const result = await web3.contract.methods.transferOwnership(
-        transferData.serialNumber,
-        transferData.newOwner
-      ).send({
-        from: web3.account,
-        gas: gasLimit,
-        gasPrice: gasPrice
-      });
+  //     const result = await web3.contract.methods.transferOwnership(
+  //       transferData.serialNumber,
+  //       transferData.newOwner
+  //     ).send({
+  //       from: web3.account,
+  //       gas: gasLimit,
+  //       gasPrice: gasPrice
+  //     });
 
-      updateTransactionStatus('Blockchain confirmed! Updating database...');
+  //     updateTransactionStatus('Blockchain confirmed! Updating database...');
 
-      // Step 3: Update backend database
-      const backendResponse = await transferOwnership({
-        serial_number: transferData.serialNumber,
-        previous_owner: transferData.previous_owner,
-        new_owner: transferData.new_number,
-        transfer_reason: transferData.transfer_reason,
-        notes: transferData.notes
-      });
+  //     // Step 3: Update backend database
+  //     const backendResponse = await transferOwnership({
+  //       serial_number: transferData.serialNumber,
+  //       previous_owner: transferData.previous_owner,
+  //       new_owner: transferData.new_number,
+  //       transfer_reason: transferData.transfer_reason,
+  //       notes: transferData.notes
+  //     });
 
-      if (backendResponse?.success != true) {
-        console.warn('Backend update failed, but blockchain transfer succeeded');
-      }
+  //     if (backendResponse?.success != true) {
+  //       console.warn('Backend update failed, but blockchain transfer succeeded');
+  //     }
 
-      updateTransactionStatus(
-        `<div style="color: #10b981; text-align: center;">
-          <h4>🎉 Ownership Transferred Successfully!</h4>
-          <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 10px 0;">
-            <p><strong>Device:</strong> ${transferData.serialNumber}</p>
-            <p><strong>New Owner:</strong> ${transferData.newOwner}</p>
-            <p><strong>Transaction Hash:</strong> ${result.transactionHash}</p>
-          </div>
-          <p>The ownership has been transferred on the blockchain!</p>
-        </div>`
-      );
+  //     updateTransactionStatus(
+  //       `<div style="color: #10b981; text-align: center;">
+  //         <h4>🎉 Ownership Transferred Successfully!</h4>
+  //         <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; margin: 10px 0;">
+  //           <p><strong>Device:</strong> ${transferData.serialNumber}</p>
+  //           <p><strong>New Owner:</strong> ${transferData.newOwner}</p>
+  //           <p><strong>Transaction Hash:</strong> ${result.transactionHash}</p>
+  //         </div>
+  //         <p>The ownership has been transferred on the blockchain!</p>
+  //       </div>`
+  //     );
 
-      // Refresh dashboard data
-      await refreshDashboard();
+  //     // Refresh dashboard data
+  //     await refreshDashboard();
       
-      // Reset form and show success
-      setShowTransferForm(false);
-      showAlert('Ownership transferred successfully!', 'success');
+  //     // Reset form and show success
+  //     setShowTransferForm(false);
+  //     showAlert('Ownership transferred successfully!', 'success');
 
-      // Auto-hide transaction modal after 5 seconds
-      setTimeout(() => {
-        hideTransactionModal();
-      }, 5000);
+  //     // Auto-hide transaction modal after 5 seconds
+  //     setTimeout(() => {
+  //       hideTransactionModal();
+  //     }, 5000);
 
-    } catch (error: any) {
-      console.error('Ownership transfer error:', error);
+  //   } catch (error: any) {
+  //     console.error('Ownership transfer error:', error);
       
-      let errorMessage = 'Failed to transfer ownership';
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (error.code === 4001) {
-        errorMessage = 'Transaction was rejected by user';
-      }
+  //     let errorMessage = 'Failed to transfer ownership';
+  //     if (error.message) {
+  //       errorMessage = error.message;
+  //     } else if (error.code === 4001) {
+  //       errorMessage = 'Transaction was rejected by user';
+  //     }
 
-      updateTransactionStatus(
-        `<div style="color: #ef4444; text-align: center;">
-          <h4>❌ Transfer Failed</h4>
-          <p>${errorMessage}</p>
-        </div>`
-      );
+  //     updateTransactionStatus(
+  //       `<div style="color: #ef4444; text-align: center;">
+  //         <h4>❌ Transfer Failed</h4>
+  //         <p>${errorMessage}</p>
+  //       </div>`
+  //     );
 
-      showAlert(errorMessage, 'error');
+  //     showAlert(errorMessage, 'error');
 
-      // Auto-hide transaction modal after 3 seconds
-      setTimeout(() => {
-        hideTransactionModal();
-      }, 3000);
-    } finally {
-      setFormLoading(false);
-    }
-  };
+  //     // Auto-hide transaction modal after 3 seconds
+  //     setTimeout(() => {
+  //       hideTransactionModal();
+  //     }, 3000);
+  //   } finally {
+  //     setFormLoading(false);
+  //   }
+  // };
 
- if (profileLoading) {
+  // Handle loading state
+  if (profileLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -309,7 +305,9 @@ const ManufacturerDashboard: React.FC = () => {
       </div>
     );
   }
- if (!user) {
+
+  // Handle no user
+  if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -328,8 +326,16 @@ const ManufacturerDashboard: React.FC = () => {
     );
   }
 
-  if (user.role !== 'manufacturer') {
-   navigate("/")
+  // Handle wrong role - show loading while redirecting
+  if (user && user.role !== 'manufacturer') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -339,7 +345,7 @@ const ManufacturerDashboard: React.FC = () => {
         user={user} 
         onRefreshProfile={refreshProfile} 
         setShowEditProfile={setShowEditProfile}
-        onProductDisplay={handleProductDisplay}/>
+      />
 
       {/* Main Content */}
       <div className="pt-16"> {/* Account for fixed navbar */}
@@ -366,21 +372,8 @@ const ManufacturerDashboard: React.FC = () => {
           {/* Quick Actions */}
           <QuickActions
             setShowProductForm={setShowProductForm} />
-
-          
         </div>
       </div>
-
-      {/* Products Grid */}
-         {showManufacturerProduct && (
-          <ProductGrid
-            products={products}
-            loading={productsLoading}
-            filter={filter}
-            onFilterChange={setFilter}
-            onTransferOwnership={handleProductTransferClick}
-            onProductDisplay={handleProductDisplay}
-          />)}
 
       {/* Product Registration Form Modal */}
       {showProductForm && (
@@ -393,19 +386,18 @@ const ManufacturerDashboard: React.FC = () => {
       )}
 
       {/* Transfer Ownership Form Modal */}
-     {showTransferForm && (
-      <TransferOwnershipForm
-        isOpen={showTransferForm}
-        onSubmit={handleOwnershipTransfer}
-        onClose={() => setShowTransferForm(false)}
-        isLoading={formLoading}
-        products={selectedProductForTransfer}
-
-      />
-    )}
+      {/* {showTransferForm && (
+        <TransferOwnershipForm
+          isOpen={showTransferForm}
+          onSubmit={handleOwnershipTransfer}
+          onClose={() => setShowTransferForm(false)}
+          isLoading={formLoading}
+          products={selectedProductForTransfer}
+        />
+      )} */}
 
       {/* Transaction Modal */}
-       {transaction.isVisible && (
+      {/* {transaction.isVisible && (
         <TransactionModal
           isOpen={transaction.isVisible}
           onClose={hideTransactionModal}
@@ -414,17 +406,17 @@ const ManufacturerDashboard: React.FC = () => {
             type: transaction.type || 'loading'
           }}
         />
-      )}
+      )} */}
 
       {/* Alert Toast */}
-      {alert.isVisible && (
+      {/* {alert.isVisible && (
         <AlertToast
           message={alert.message}
           type={alert.type}
           onClose={hideAlert}
           isVisible={alert.isVisible}
         />
-      )}
+      )} */}
       
       {showEditProfile && (
         <EditProfile

@@ -9,17 +9,18 @@ interface DashboardNavbarProps {
   user: UserType;
   onRefreshProfile?: () => Promise<UserType>; 
   setShowEditProfile: Dispatch<SetStateAction<boolean>>
-  onProductDisplay: () => void
 }
 
 export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ 
   user, 
-  onRefreshProfile, setShowEditProfile, onProductDisplay
+  onRefreshProfile, 
+  setShowEditProfile
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  
   const handleRefreshProfile = async () => {
     if (!onRefreshProfile) return;
     
@@ -34,28 +35,34 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     }
   };
 
+  const handleProductsClick = () => {
+    navigate(`/dashboard/${user.role}/${user.id}/products`);
+  };
+
   return (
     <nav className="bg-white shadow-lg fixed top-0 left-0 right-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
-          <button className="flex items-center space-x-2">
+          <Link to={`/dashboard/${user.role}/${user.id}`} className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
               <Shield className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
               VerifyChain
             </span>
-          </button>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:block">
             <ul className="ml-10 flex items-baseline space-x-4">
-              <li className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer">
-                Dashboard
-              </li>
+              <Link to={`/dashboard/${user.role}/${user.id}`}>
+                <li className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer">
+                  Dashboard
+                </li>
+              </Link>
               <li
-                onClick={onProductDisplay}
+                onClick={handleProductsClick}
                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium cursor-pointer"
               >
                 Products
@@ -167,9 +174,6 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
           {/* Mobile menu and user profile section */}
           <div className="md:hidden flex items-center space-x-3">
-            {/* Mobile User Profile Icon - Always visible */}
-            
-
             {/* Mobile Refresh Button */}
             {onRefreshProfile && (
               <button
@@ -203,26 +207,31 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       {isMobileMenuOpen && (
         <div className="md:hidden">
           <div className="flex items-center space-x-0.5 px-2 sm:px-3">
-              <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
-              </div>
-               <div className='flex flex-col items-start gap-y-1'>
-                     <span className="ml-2 text-gray-700 font-medium">
-                      {user.current_company_name}
-                    </span>
-                    <span className="ml-2 text-gray-700 font-light text-xs">
-                      {user.primary_email}
-                    </span>
-                    </div>
+            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+              <User className="h-5 w-5 text-white" />
             </div>
+            <div className='flex flex-col items-start gap-y-1'>
+              <span className="ml-2 text-gray-700 font-medium">
+                {user.current_company_name}
+              </span>
+              <span className="ml-2 text-gray-700 font-light text-xs">
+                {user.primary_email}
+              </span>
+            </div>
+          </div>
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
             {/* Mobile Navigation Links */}
-            <button className="text-gray-700 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left">
-              Dashboard
-            </button>
+            <Link to={`/dashboard/${user.role}/${user.id}`}>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="text-gray-700 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left"
+              >
+                Dashboard
+              </button>
+            </Link>
             <button
               onClick={() => {
-                onProductDisplay();
+                handleProductsClick();
                 setIsMobileMenuOpen(false);
               }}
               className="text-gray-700 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left"
@@ -253,9 +262,9 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
               <button
                 onClick={() => {
-                          authService.logout()
-                          navigate("/")
-                        }}
+                  authService.logout()
+                  navigate("/")
+                }}
                 className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
               >
                 <LogOut className="mr-3 h-5 w-5" />
