@@ -29,7 +29,7 @@ const ManufacturerDashboard: React.FC = () => {
   const [showManufacturerProduct, setShowManufacturerProduct] = useState(false)
   const navigate = useNavigate()
   const { user,  refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
-  console.log(user)
+
 
   const { 
     stats, 

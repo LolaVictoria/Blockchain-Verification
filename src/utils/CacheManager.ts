@@ -100,7 +100,6 @@ export class CacheManager {
   ): Promise<T | T[]> {
     const token = localStorage.getItem('token') || localStorage.getItem('authToken');
     if (!token) {
-      console.log(`No auth token, skipping ${dataType} data load`);
       return [] as T[];
     }
 
@@ -108,7 +107,6 @@ export class CacheManager {
       if (!forceRefresh && await this.isCacheValid(dataType)) {
         const cachedData = this.getCachedData(this.config[dataType].cacheKey);
         if (cachedData) {
-          console.log(`Using cached ${dataType} data`);
           if (!cachedData.isEmpty) {
             displayFunction(cachedData.data as T);
             return cachedData.data as T | T[];
@@ -186,7 +184,6 @@ export class CacheManager {
   // Clear specific cache (from main.js)
   clearCache(dataType: string): void {
     localStorage.removeItem(this.config[dataType].cacheKey);
-    console.log(`Cleared ${dataType} cache`);
   }
 
   // Clear all caches (from main.js)

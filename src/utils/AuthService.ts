@@ -202,7 +202,6 @@ export class AuthService {
           loading: false,
           error: null
         });
-        console.log('Login successful:', userData.username);
         return true;
       } else {
         throw new Error(response.data.error || 'Login failed');
@@ -301,7 +300,6 @@ export class AuthService {
           error: null
         });
 
-        console.log('Profile loaded:', userData.username);
         return userData;
       } else {
         throw new Error('Failed to load profile');
@@ -340,8 +338,6 @@ export class AuthService {
       // Convert legacy format to new format if needed
       const requestData = this.normalizeUpdateData(updateData);
 
-      console.log('Sending profile update:', requestData);
-
       let response: any;
       
       try {
@@ -355,7 +351,7 @@ export class AuthService {
       } catch (error: any) {
         if (error.response?.status === 405) {
           // Try PATCH as fallback
-          console.log('PUT not supported, trying PATCH...');
+          //console.log('PUT not supported, trying PATCH...');
           response = await apiClient.patch<ProfileResponse>(endpoint, requestData, {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -380,7 +376,6 @@ export class AuthService {
           error: null
         });
 
-        console.log('Profile update response:', response.data);
         return updatedUser;
       } else {
         throw new Error(response.data?.error || 'Profile update failed');

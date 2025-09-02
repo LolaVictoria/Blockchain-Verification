@@ -200,7 +200,7 @@ const SignupScreen = () => {
         <div className="max-w-md mx-auto">
           <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-8">
             <div className="flex items-center justify-center mb-8">
-              <button className="flex items-center space-x-2" onClick={() => console.log('Navigate to home')}>
+              <button className="flex items-center space-x-2">
                 <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
                   <Shield className="w-9 h-9 text-white" />
                 </div>
@@ -273,7 +273,7 @@ const SignupScreen = () => {
       <div className="max-w-md mx-auto">
         <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-8">
           <div className="flex items-center justify-center mb-8">
-            <button className="flex items-center space-x-2" onClick={() => console.log('Navigate to home')}>
+            <button className="flex items-center space-x-2">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
                 <Shield className="w-9 h-9 text-white" />
               </div>

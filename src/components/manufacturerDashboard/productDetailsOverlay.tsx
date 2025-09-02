@@ -45,8 +45,7 @@ export const ProductDetailsOverlay: React.FC<ProductDetailsOverlayProps> = ({ pr
 
   const copyToClipboard = async (text: string, label: string) => {
     try {
-      await navigator.clipboard.writeText(text);
-      console.log(`${label} copied to clipboard`);
+      await navigator.clipboard.writeText(text);;
     } catch (err) {
       console.error(`Failed to copy ${label}:`, err);
     }
