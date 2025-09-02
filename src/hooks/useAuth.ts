@@ -25,7 +25,7 @@ export const useAuth = (): UseAuthReturn => {
       return await authService.login(email, password);
     } catch (err: any) {
       console.error('Login error in hook:', err);
-      return false;
+      throw err;
     }
   }, []);
 

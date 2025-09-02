@@ -31,7 +31,6 @@ export interface ApiError {
 // Create axios instance with base configuration
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000, 
   withCredentials: false, 
   headers: {
     'Content-Type': 'application/json',

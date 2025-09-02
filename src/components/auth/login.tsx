@@ -17,11 +17,14 @@ const LoginScreen: React.FC = () => {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   setError('');
-  const success = await login(email, password);
-  if (!success) {
-    setError('Invalid credentials. Please try again.');
-  } else {
-    setLoginSuccess(true); // Trigger useEffect
+  
+  try {
+    await login(email, password);
+    setLoginSuccess(true);
+  } catch (error) {
+    console.error('Login failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    setError(errorMessage);
   }
 };
 

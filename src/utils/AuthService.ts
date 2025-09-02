@@ -169,7 +169,7 @@ export class AuthService {
   }
 }
 
-  // LOGIN - The main entry point
+  // LOGIN 
   async login(email: string, password: string): Promise<boolean> {
     this.updateState({ loading: true, error: null });
 
