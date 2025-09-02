@@ -274,36 +274,36 @@ const VerifyPage: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Page Navigation */}
           <div className="mb-8">
-            <div className="flex justify-center gap-6 border-b-2 border-gray-200 pb-6">
+            <div className="flex flex-col gap-y-2  md:flex-row items-center justify-center gap-6 border-b-2 border-gray-200 pb-6">
               <button
                 onClick={() => setActiveTab('verify')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${
+                className={`px-6 py-3 rounded-xl w-48 font-semibold transition-all duration-200 shadow-md ${
                   activeTab === 'verify' 
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' 
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg border border-gray-200'
                 }`}
               >
-                🔍 Single Verification
+                Single Verification
               </button>
               <button
                 onClick={() => setActiveTab('batch')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${
+                className={`px-6 py-3 w-48 rounded-xl font-semibold transition-all duration-200 shadow-md ${
                   activeTab === 'batch' 
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' 
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg border border-gray-200'
                 }`}
               >
-                📊 Batch Verification
+                Batch Verification
               </button>
               <button
                 onClick={() => setActiveTab('sample')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 shadow-md ${
+                className={`px-6 py-3 w-48 rounded-xl font-semibold transition-all duration-200 shadow-md ${
                   activeTab === 'sample' 
                     ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' 
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg border border-gray-200'
                 }`}
               >
-                🔬 Sample Data
+                Sample Data
               </button>
             </div>
           </div>
