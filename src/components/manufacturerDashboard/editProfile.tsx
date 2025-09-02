@@ -287,14 +287,14 @@ const EditProfile: React.FC<EditProfileProps> = ({ onClose, userRole }) => {
                   <label className="block text-sm font-medium text-gray-700">Role</label>
                   <p className="text-gray-900 capitalize">{user.role}</p>
                 </div>
-                <div>
+                {userRole === 'manufacturer' && <div>
                   <label className="block text-sm font-medium text-gray-700">Account Status</label>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     user.is_auth_verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {user.is_auth_verified ? 'Verified' : 'Pending Verification'}
                   </span>
-                </div>
+                </div>}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Member Since</label>
                   <p className="text-gray-900">

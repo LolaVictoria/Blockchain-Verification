@@ -145,18 +145,33 @@ export class AuthService {
 }
 
   // Get current authentication status
- checkAuthStatus(): boolean {
+checkAuthStatus(): boolean {
   const token = this.getToken();
   if (token && this.isTokenValid(token)) {
-    if (!this.appState.user) {
-      // If we don't have user data, try to get it from token
-      const userFromToken = this.getUserFromToken(token);
-      if (userFromToken) {
-        this.appState.user = userFromToken;
-        this.updateState({ isAuthenticated: true });
-        return true;
-      } else {
-        // If we can't get user from token, clear session
+    if (!this.appState.user || Object.keys(this.appState.user).length === 0) {
+      // First try to get user from localStorage (more complete data)
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser);
+          this.appState.user = userData;
+          this.updateState({ isAuthenticated: true });
+          return true;
+        } catch (e) {
+          console.warn('Failed to parse stored user data, falling back to token');
+        }
+      }
+      
+      // Fallback to token data only if localStorage fails
+      try {
+        const userFromToken = this.getUserFromToken(token);
+        if (userFromToken) {
+          this.appState.user = userFromToken;
+          this.updateState({ isAuthenticated: true });
+          return true;
+        }
+      } catch (e) {
+        console.error('Failed to get user from token:', e);
         this.clearSession();
         return false;
       }
@@ -189,13 +204,14 @@ export class AuthService {
         if (response.data.refresh_token) {
           localStorage.setItem('refreshToken', response.data.refresh_token);
         }
-
         // Store user data
         const userData = response.data.user;
         localStorage.setItem('user', JSON.stringify(userData));
+        console.log(userData)
         localStorage.setItem('user_role', userData.role);
 
         // Update state
+        this.appState.user = userData; 
         this.updateState({
           user: userData,
           isAuthenticated: true,

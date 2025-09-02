@@ -31,11 +31,7 @@ export const useAuthContext = (): AuthContextType => {
   return context;
 };
 
-// For backward compatibility, you can also export individual functions
-export const useAuthUser = () => {
-  const { user } = useAuthContext();
-  return user;
-};
+
 
 export const useAuthActions = () => {
   const { login, logout, signup, refreshProfile, updateProfile, error } = useAuthContext();

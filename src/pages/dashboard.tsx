@@ -5,6 +5,7 @@ import ManufacturerDashboard from "./ManufacturerDashboard";
 // import DeveloperDashboard from "./developerDashboard";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import CustomerDashboard from "./customerDahboard";
 
 const Dashboard: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -67,8 +68,9 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* {userRole === "manufacturer" ? <ManufacturerDashboard /> : <DeveloperDashboard />} */}
-        <ManufacturerDashboard />
+        {userRole === "manufacturer" && <ManufacturerDashboard />}
+
+        {userRole === "customer" && <CustomerDashboard /> }
       </main>
     </div>
   );

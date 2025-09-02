@@ -1,2 +1,11 @@
 1.  showalert
 2. redundancy for - getOwnershipHistory function
+
+GET /api/analytics/verifications?timeRange=${timeRange}
+GET /api/analytics/devices
+GET /api/analytics/customers
+GET /api/analytics/counterfeit-locations
+POST /api/counterfeit-reports
+
+
+

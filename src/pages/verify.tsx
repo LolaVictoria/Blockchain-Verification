@@ -5,6 +5,8 @@ import type { VerificationResult, BatchVerificationResult, SampleData, Ownership
 import { copyToClipboard } from '../utils/helper';
 import { OwnershipHistoryModal } from '../components/manufacturerDashboard/ownershipTransferHistory';
 import VerificationResultCard from '../components/manufacturerDashboard/verificationResultCard';
+import CounterfeitAlertComponent from '../components/verification/CounterfeitAlertComponent';
+
 // Loading Spinner Component
 const LoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
   <div className="flex flex-col items-center p-8 text-gray-500">
@@ -13,9 +15,6 @@ const LoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
   </div>
 );
 
-
-
-// Main Verification Page Component
 const VerifyPage: React.FC = () => {
   const navigate = useNavigate();
   const {
@@ -28,6 +27,7 @@ const VerifyPage: React.FC = () => {
     clearError
   } = useVerification();
 
+  const [showCounterfeitAlert, setShowCounterfeitAlert] = useState(false);
   const [activeTab, setActiveTab] = useState('verify');
   const [serialNumber, setSerialNumber] = useState('');
   const [batchSerials, setBatchSerials] = useState('');
@@ -53,6 +53,9 @@ const VerifyPage: React.FC = () => {
       clearError();
       const result = await verifyProduct(serialNumber);
       setVerificationResult(result);
+      if (!result.authentic) {
+        setShowCounterfeitAlert(true);
+      }
     } catch (err) {
       console.error('Verification failed:', err);
       setVerificationResult(null);
@@ -112,6 +115,17 @@ const VerifyPage: React.FC = () => {
     setTimeout(() => handleVerifyDevice(), 100);
   };
 
+  // Handle counterfeit report submission
+  const handleCounterfeitReportSubmit = async (reportData: any) => {
+    try {
+      // Add your API call here to submit the counterfeit report
+      console.log('Counterfeit report submitted:', reportData);
+      // You can add an API call here to send the report to your backend
+      // await submitCounterfeitReport(reportData);
+    } catch (error) {
+      console.error('Error submitting counterfeit report:', error);
+    }
+  };
  
   // Load sample data when tab changes
   useEffect(() => {
@@ -279,7 +293,7 @@ const VerifyPage: React.FC = () => {
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg border border-gray-200'
                 }`}
               >
-                Batch Verification
+                📊 Batch Verification
               </button>
               <button
                 onClick={() => setActiveTab('sample')}
@@ -289,7 +303,7 @@ const VerifyPage: React.FC = () => {
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:shadow-lg border border-gray-200'
                 }`}
               >
-                Sample Data
+                🔬 Sample Data
               </button>
             </div>
           </div>
@@ -522,7 +536,7 @@ const VerifyPage: React.FC = () => {
                         {sampleData.authentic?.blockchain?.map(serial => (
                           <div key={serial} className="bg-white p-4 rounded-lg border border-green-200 flex justify-between items-center shadow-sm">
                             <span 
-                              onClick={() => copyToClipboard(serial, 'Transaction Hash')}
+                              onClick={() => copyToClipboard(serial, 'Serial Number')}
                               className="font-mono cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-all duration-200"
                               title="Click to copy"
                             >
@@ -572,7 +586,7 @@ const VerifyPage: React.FC = () => {
                         {sampleData.counterfeit?.map(serial => (
                           <div key={serial} className="bg-white p-4 rounded-lg border border-red-200 flex justify-between items-center shadow-sm">
                             <span 
-                              onClick={() => copyToClipboard(serial,  'Serial Number')}
+                              onClick={() => copyToClipboard(serial, 'Serial Number')}
                               className="font-mono cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-all duration-200"
                               title="Click to copy"
                             >
@@ -605,20 +619,30 @@ const VerifyPage: React.FC = () => {
           </div>
         </div>
       </main>
-
+     
       {/* Ownership History Modal */}
       {ownershipModal.open && (
         <OwnershipHistoryModal
-            isOpen={ownershipModal.open}
-            onClose={() => setOwnershipModal(prev => ({ ...prev, open: false }))}
-            loading={ownershipModal.loading}
-            ownershipModal={ownershipModal}
-            serialNumber={ownershipModal.serialNumber}
-            ownershipHistory={ownershipModal.history}
-          />
+          isOpen={ownershipModal.open}
+          onClose={() => setOwnershipModal(prev => ({ ...prev, open: false }))}
+          loading={ownershipModal.loading}
+          ownershipModal={ownershipModal}
+          serialNumber={ownershipModal.serialNumber}
+          ownershipHistory={ownershipModal.history}
+        />
+      )}
+
+      {/* Counterfeit Alert Modal */}
+      {showCounterfeitAlert && verificationResult && !verificationResult.authentic && (
+        <CounterfeitAlertComponent
+          serialNumber={verificationResult.serialNumber}
+          brand={verificationResult.brand || verificationResult.manufacturerName || 'Unknown Brand'}
+          onReportSubmit={handleCounterfeitReportSubmit}
+          onClose={() => setShowCounterfeitAlert(false)}
+        />
       )}
     </div>
   );
 };
 
-export default VerifyPage
+export default VerifyPage;

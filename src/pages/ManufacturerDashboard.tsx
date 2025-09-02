@@ -15,6 +15,8 @@ import { DashboardNavbar } from '../components/manufacturerDashboard/mdNavbar';
 import EditProfile from '../components/manufacturerDashboard/editProfile';
 import { useAuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+// import ManufacturerAnalyticsDashboard from '../components/analytics/manufacturerAnalytics';
+import useAuth from '../hooks/useAuth';
 
 const ManufacturerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -24,8 +26,8 @@ const ManufacturerDashboard: React.FC = () => {
   // const [showTransferForm, setShowTransferForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
-  const { user, refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
-
+  const {  refreshProfile, loading: profileLoading, error: profileError } = useAuthContext()
+ const { user } = useAuth()
   const { 
     stats, 
     statsLoading, 
@@ -372,6 +374,8 @@ const ManufacturerDashboard: React.FC = () => {
           {/* Quick Actions */}
           <QuickActions
             setShowProductForm={setShowProductForm} />
+
+          {/* <ManufacturerAnalyticsDashboard /> */}
         </div>
       </div>
 
@@ -385,38 +389,7 @@ const ManufacturerDashboard: React.FC = () => {
         />
       )}
 
-      {/* Transfer Ownership Form Modal */}
-      {/* {showTransferForm && (
-        <TransferOwnershipForm
-          isOpen={showTransferForm}
-          onSubmit={handleOwnershipTransfer}
-          onClose={() => setShowTransferForm(false)}
-          isLoading={formLoading}
-          products={selectedProductForTransfer}
-        />
-      )} */}
-
-      {/* Transaction Modal */}
-      {/* {transaction.isVisible && (
-        <TransactionModal
-          isOpen={transaction.isVisible}
-          onClose={hideTransactionModal}
-          status={{
-            message: transaction.message,
-            type: transaction.type || 'loading'
-          }}
-        />
-      )} */}
-
-      {/* Alert Toast */}
-      {/* {alert.isVisible && (
-        <AlertToast
-          message={alert.message}
-          type={alert.type}
-          onClose={hideAlert}
-          isVisible={alert.isVisible}
-        />
-      )} */}
+     
       
       {showEditProfile && (
         <EditProfile
