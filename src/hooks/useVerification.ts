@@ -1,146 +1,115 @@
-import { useState, useCallback } from 'react';
-import verificationService, { 
-  type VerificationResult, 
-  type BatchVerificationResult, 
-  type SampleData, 
-  type VerificationStats,
-  type OwnershipHistoryResponse 
-} from '../utils/VerificationService';
+// hooks/useVerification.ts - Debug version
+import { useState } from 'react';
+import type { VerificationResult, BatchVerificationResult, SampleData, OwnershipRecord } from '../utils/VerificationService';
 
-interface UseVerificationReturn {
-  // State
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  verifyProduct: (serialNumber: string) => Promise<VerificationResult>;
-  verifyBatch: (serialNumbers: string[]) => Promise<BatchVerificationResult>;
-  loadSampleData: () => Promise<SampleData>;
-  loadStats: () => Promise<VerificationStats>;
-  getOwnershipHistory: (serialNumber: string) => Promise<OwnershipHistoryResponse>;
-  clearError: () => void;
-}
+// Make sure your verificationService is properly exported
+import { verificationService } from '../utils/VerificationService';
 
-/**
- * Hook for verification operations without context dependency
- * Useful for components that need verification but don't want context overhead
- */
-export const useVerification = (): UseVerificationReturn => {
+export const useVerification = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const clearError = useCallback(() => {
+  // Debug: Check if verificationService is properly imported
+  console.log('verificationService:', verificationService);
+  
+  const clearError = () => {
     setError(null);
-  }, []);
+  };
 
-  const verifyProduct = useCallback(async (serialNumber: string): Promise<VerificationResult> => {
-    if (!serialNumber.trim()) {
-      const errorMsg = 'Please enter a serial number';
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-
+  const verifyProduct = async (serialNumber: string): Promise<VerificationResult> => {
+    console.log('verifyProduct called with:', serialNumber);
     setIsLoading(true);
     setError(null);
 
     try {
+      // Debug: Check if verifyDevice method exists
+      console.log('VerificationService.verifyDevice:', verificationService.verifyProduct);
+      
+      if (!verificationService.verifyProduct) {
+        throw new Error('VerificationService.verifyProduct is not available');
+      }
+
       const result = await verificationService.verifyProduct(serialNumber);
-      
-      // Log verification attempt (non-blocking)
-      verificationService.logVerificationAttempt({
-        serial_number: serialNumber,
-        authentic: result.authentic,
-        timestamp: new Date().toISOString(),
-        user_agent: navigator.userAgent
-      }).catch(err => console.warn('Logging failed:', err));
-      
+      console.log('Verification result:', result);
       return result;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to verify device';
+    } catch (err) {
+      console.error('Verification error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const verifyBatch = useCallback(async (serialNumbers: string[]): Promise<BatchVerificationResult> => {
-    const cleanSerials = serialNumbers.map(s => s.trim()).filter(s => s);
-    
-    if (cleanSerials.length === 0) {
-      const errorMsg = 'Please enter valid serial numbers';
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-
-    if (cleanSerials.length > 10) {
-      const errorMsg = 'Maximum 10 devices per batch';
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    }
-
+  const verifyBatch = async (serialNumbers: string[]): Promise<BatchVerificationResult> => {
+    console.log('verifyBatch called with:', serialNumbers);
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await verificationService.verifyBatch(cleanSerials);
+      if (!verificationService.verifyBatch) {
+        throw new Error('VerificationService.verifyBatch is not available');
+      }
+
+      const result = await verificationService.verifyBatch(serialNumbers);
+      console.log('Batch verification result:', result);
       return result;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to verify batch';
+    } catch (err) {
+      console.error('Batch verification error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const loadSampleData = useCallback(async (): Promise<SampleData> => {
+  const loadSampleData = async (): Promise<SampleData> => {
+    console.log('loadSampleData called');
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await verificationService.getSampleData();
-      return data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load sample data';
+      if (!verificationService.loadSampleData) {
+        throw new Error('verificationService.loadSampleData is not available');
+      }
+
+      const result = await verificationService.loadSampleData();
+      console.log('Sample data result:', result);
+      return result;
+    } catch (err) {
+      console.error('Load sample data error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const loadStats = useCallback(async (): Promise<VerificationStats> => {
+  const getOwnershipHistory = async (serialNumber: string): Promise<{ history: OwnershipRecord[] }> => {
+    console.log('getOwnershipHistory called with:', serialNumber);
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await verificationService.getStats();
-      return data;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load statistics';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      if (!verificationService.getOwnershipHistory) {
+        throw new Error('verificationService.getOwnershipHistory is not available');
+      }
 
-  const getOwnershipHistory = useCallback(async (serialNumber: string): Promise<OwnershipHistoryResponse> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
       const result = await verificationService.getOwnershipHistory(serialNumber);
+      console.log('Ownership history result:', result);
       return result;
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to load ownership history';
+    } catch (err) {
+      console.error('Get ownership history error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
   return {
     isLoading,
@@ -148,7 +117,6 @@ export const useVerification = (): UseVerificationReturn => {
     verifyProduct,
     verifyBatch,
     loadSampleData,
-    loadStats,
     getOwnershipHistory,
     clearError
   };

@@ -15,7 +15,7 @@ import { DashboardNavbar } from '../components/manufacturerDashboard/mdNavbar';
 import EditProfile from '../components/manufacturerDashboard/editProfile';
 import { useAuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-// import ManufacturerAnalyticsDashboard from '../components/analytics/manufacturerAnalytics';
+import ManufacturerAnalyticsDashboard from '../components/analytics/manufacturerAnalytics';
 import useAuth from '../hooks/useAuth';
 
 const ManufacturerDashboard: React.FC = () => {
@@ -375,7 +375,7 @@ const ManufacturerDashboard: React.FC = () => {
           <QuickActions
             setShowProductForm={setShowProductForm} />
 
-          {/* <ManufacturerAnalyticsDashboard /> */}
+          <ManufacturerAnalyticsDashboard />
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { CustomerNavbar } from '../components/customerDashboard/customerNavbar';
 import { useAlert } from '../hooks/useAlert';
-// import CustomerAnalyticsDashboard from '../components/analytics/customerAnalytics';
+import CustomerAnalyticsDashboard from '../components/analytics/customerAnalytics';
 import useAuth from '../hooks/useAuth';
 
 const CustomerDashboard: React.FC = () => {
@@ -105,7 +105,7 @@ const CustomerDashboard: React.FC = () => {
 
          
 
-          {/* <CustomerAnalyticsDashboard /> */}
+          <CustomerAnalyticsDashboard />
         </div>
       </div>
 

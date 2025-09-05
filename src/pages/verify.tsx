@@ -1,6 +1,8 @@
+// pages/VerifyPage.tsx - Updated with analytics integration
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVerification } from '../hooks/useVerification';
+import { useAnalytics } from '../hooks/useAnalytics';
 import type { VerificationResult, BatchVerificationResult, SampleData, OwnershipRecord } from '../../src/utils/VerificationService';
 import { copyToClipboard } from '../utils/helper';
 import { OwnershipHistoryModal } from '../components/manufacturerDashboard/ownershipTransferHistory';
@@ -27,6 +29,8 @@ const VerifyPage: React.FC = () => {
     clearError
   } = useVerification();
 
+  const { submitCounterfeitReport } = useAnalytics();
+
   const [showCounterfeitAlert, setShowCounterfeitAlert] = useState(false);
   const [activeTab, setActiveTab] = useState('verify');
   const [serialNumber, setSerialNumber] = useState('');
@@ -34,6 +38,7 @@ const VerifyPage: React.FC = () => {
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [batchResults, setBatchResults] = useState<BatchVerificationResult | null>(null);
   const [sampleData, setSampleData] = useState<SampleData | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   
   const [ownershipModal, setOwnershipModal] = useState<{
     open: boolean;
@@ -48,28 +53,51 @@ const VerifyPage: React.FC = () => {
   });
 
   // Handle single device verification
-  const handleVerifyDevice = async () => {
-    try {
-      clearError();
-      const result = await verifyProduct(serialNumber);
-      setVerificationResult(result);
-      if (!result.authentic) {
-        setShowCounterfeitAlert(true);
-      }
-    } catch (err) {
-      console.error('Verification failed:', err);
-      setVerificationResult(null);
+const handleVerifyDevice = async () => {
+  try {
+    clearError();
+    const result = await verifyProduct(serialNumber);
+    setVerificationResult(result);
+    
+    // Debug logs
+    console.log('Verification result:', result);
+    console.log('Is authentic:', result.authentic);
+    
+    // SIMPLE: Show alert for any non-authentic product
+    if (!result.authentic) {
+      console.log('Showing counterfeit alert');
+      setShowCounterfeitAlert(true);
+    } else {
+      setShowCounterfeitAlert(false);
     }
-  };
+    
+    setSubmitSuccess(null);
+  } catch (err) {
+    console.error('Verification failed:', err);
+    setVerificationResult(null);
+    setShowCounterfeitAlert(false);
+  }
+};
 
   // Handle batch verification
   const handleVerifyBatch = async () => {
     const serialNumbers = batchSerials.split('\n').map(s => s.trim()).filter(s => s);
     
+    if (serialNumbers.length === 0) {
+      alert('Please enter at least one serial number');
+      return;
+    }
+
+    if (serialNumbers.length > 10) {
+      alert('Maximum 10 serial numbers allowed per batch');
+      return;
+    }
+    
     try {
       clearError();
       const result = await verifyBatch(serialNumbers);
       setBatchResults(result);
+      setSubmitSuccess(null);
     } catch (err) {
       console.error('Batch verification failed:', err);
       setBatchResults(null);
@@ -115,17 +143,26 @@ const VerifyPage: React.FC = () => {
     setTimeout(() => handleVerifyDevice(), 100);
   };
 
-  // Handle counterfeit report submission
-  const handleCounterfeitReportSubmit = async (reportData: any) => {
-    try {
-      // Add your API call here to submit the counterfeit report
-      console.log('Counterfeit report submitted:', reportData);
-      // You can add an API call here to send the report to your backend
-      // await submitCounterfeitReport(reportData);
-    } catch (error) {
-      console.error('Error submitting counterfeit report:', error);
+  // Handle counterfeit report submission with analytics integration
+const handleCounterfeitReportSubmit = async (reportData: any) => {
+  try {
+    const result = await submitCounterfeitReport({
+      serialNumber: reportData.serialNumber,
+      productName: reportData.brand,
+      customerConsent: reportData.customerConsent,
+      locationData: reportData.locationData,
+    });
+
+    if (result.success) {
+      setSubmitSuccess(`Counterfeit report submitted successfully. Report ID: ${result.reportId}`);
+      setShowCounterfeitAlert(false);
     }
-  };
+  } catch (error) {
+    console.error('Error submitting counterfeit report:', error);
+  }
+};
+
+  
  
   // Load sample data when tab changes
   useEffect(() => {
@@ -133,6 +170,16 @@ const VerifyPage: React.FC = () => {
       handleLoadSampleData();
     }
   }, [activeTab, sampleData]);
+
+  // Clear success message after some time
+  useEffect(() => {
+    if (submitSuccess) {
+      const timer = setTimeout(() => {
+        setSubmitSuccess(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [submitSuccess]);
 
   // Render verification result
   const renderVerificationResult = () => {
@@ -164,6 +211,16 @@ const VerifyPage: React.FC = () => {
 
     return (
       <VerificationResultCard type={resultType}>
+        {/* Success message display */}
+        {submitSuccess && (
+          <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg">
+            <div className="flex items-center">
+              <span className="mr-2">✅</span>
+              <span>{submitSuccess}</span>
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl font-bold text-gray-800">{statusIcon} {statusText}</h3>
           {verificationBadge && (
@@ -179,6 +236,13 @@ const VerifyPage: React.FC = () => {
             {verificationResult.serialNumber}
           </code>
         </p>
+
+        {/* Response time display */}
+        {verificationResult.response_time && (
+          <p className="mb-4 text-sm text-gray-600">
+            <strong>Response Time:</strong> {verificationResult.response_time.toFixed(2)}s
+          </p>
+        )}
         
         {message && <p className="mb-4 italic text-gray-600 bg-gray-100 p-3 rounded-lg">{message}</p>}
         
@@ -469,7 +533,14 @@ const VerifyPage: React.FC = () => {
                         <div key={index} className={`p-6 rounded-xl border-l-4 shadow-md ${statusClass}`}>
                           <div className="flex justify-between items-center mb-4">
                             <strong className="font-mono text-lg">{statusIcon} {result.serialNumber}</strong>
-                            <span className="px-3 py-1 bg-white rounded-full text-sm font-semibold border">{verificationSource}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 bg-white rounded-full text-sm font-semibold border">{verificationSource}</span>
+                              {result.response_time && (
+                                <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">
+                                  {result.response_time.toFixed(2)}s
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                             <div><strong>Status:</strong> {statusText}</div>
@@ -633,12 +704,13 @@ const VerifyPage: React.FC = () => {
       )}
 
       {/* Counterfeit Alert Modal */}
-      {showCounterfeitAlert && verificationResult && !verificationResult.authentic && (
+      {showCounterfeitAlert && verificationResult && (
         <CounterfeitAlertComponent
           serialNumber={verificationResult.serialNumber}
           brand={verificationResult.brand || verificationResult.manufacturerName || 'Unknown Brand'}
-          onReportSubmit={handleCounterfeitReportSubmit}
+          productName={verificationResult.model || verificationResult.brand}
           onClose={() => setShowCounterfeitAlert(false)}
+          onReportSuccess={handleCounterfeitReportSubmit}
         />
       )}
     </div>

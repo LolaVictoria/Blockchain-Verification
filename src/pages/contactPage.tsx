@@ -52,7 +52,7 @@ const ContactPage: React.FC = () => {
               <p className="text-slate-300">support@verifychain.com</p>
             </div>
             
-            <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-6">
+            {/* <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-white mb-3">Phone</h3>
               <p className="text-slate-300">+1 (555) 123-4567</p>
             </div>
@@ -60,7 +60,7 @@ const ContactPage: React.FC = () => {
             <div className="bg-slate-800/50 border border-blue-500/20 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-white mb-3">Office</h3>
               <p className="text-slate-300">123 Blockchain Street<br />Tech City, TC 12345</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

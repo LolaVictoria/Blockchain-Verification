@@ -3,9 +3,9 @@ import axios, { type AxiosResponse, AxiosError, type AxiosRequestConfig } from '
 // Update the BASE_URL to use the proxy in development
 const getBaseURL = () => {
   if (import.meta.env.DEV) {
-    return '/api'; // Use proxy in development
+    return '/api';
   }
-  return import.meta.env.VITE_BASE_URL || 'https://product-verification-blockchain.onrender.com';
+  return import.meta.env.VITE_BASE_URL;
 };
 
 const BASE_URL = getBaseURL();

@@ -1,19 +1,26 @@
-import { useState } from 'react';
+// components/verification/CounterfeitAlertComponent.tsx
+import React, { useState } from 'react';
 import { AlertTriangle, MapPin, Send, X, CheckCircle } from 'lucide-react';
+import { useAnalytics } from '../../hooks/useAnalytics';
+import type { CounterfeitReportData } from '../../utils/AnalyticsService';
 
-interface CounterfeitAlertComponentType {
+interface CounterfeitAlertComponentProps {
   serialNumber: string;
   brand: string;
-  onReportSubmit: (reportData: any) => void;
+  productName?: string;
   onClose: () => void;
+  onReportSuccess?: (reportId: string) => void;
 }
 
-const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({ 
+const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({ 
   serialNumber, 
-  brand, 
-  onReportSubmit, 
-  onClose 
+  brand,
+  productName,
+  onClose,
+  onReportSuccess
 }) => {
+  const { submitCounterfeitReport, loading } = useAnalytics();
+  
   const [showLocationConsent, setShowLocationConsent] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [locationData, setLocationData] = useState({
@@ -25,8 +32,9 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
     purchasePrice: '',
     additionalNotes: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [reportId, setReportId] = useState<string>('');
 
   const handleLocationConsentClick = () => {
     setShowLocationConsent(true);
@@ -50,38 +58,47 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
   };
 
   const handleSubmitReport = async () => {
-    setIsSubmitting(true);
+    setSubmitError(null);
     
-    const reportData = {
+    const reportData: CounterfeitReportData = {
       serialNumber,
-      brand,
-      locationData: consentGiven ? locationData : null,
-      timestamp: new Date().toISOString(),
-      customerConsent: consentGiven
+      productName: productName || brand,
+      customerConsent: consentGiven,
+      locationData: consentGiven ? {
+        ...locationData,
+        // Clean up empty fields
+        storeName: locationData.storeName.trim() || undefined,
+        storeAddress: locationData.storeAddress.trim() || undefined,
+        city: locationData.city.trim() || undefined,
+        state: locationData.state.trim() || undefined,
+        purchaseDate: locationData.purchaseDate || undefined,
+        purchasePrice: locationData.purchasePrice || undefined,
+        additionalNotes: locationData.additionalNotes.trim() || undefined,
+      } : undefined,
     };
 
     try {
-      // Replace with your actual API call
-      // await fetch('/api/counterfeit-reports', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(reportData)
-      // });
+      const result = await submitCounterfeitReport(reportData);
       
-      console.log('Counterfeit report submitted:', reportData);
-      
-      setTimeout(() => {
-        setIsSubmitting(false);
+      if (result.success) {
+        setReportId(result.reportId);
         setSubmitted(true);
         
-        if (onReportSubmit) {
-          onReportSubmit(reportData);
+        if (onReportSuccess) {
+          onReportSuccess(result.reportId);
         }
-      }, 1500);
+        
+        // Auto-close after 3 seconds
+        setTimeout(() => {
+          onClose();
+        }, 3000);
+      } else {
+        setSubmitError(result.message || 'Failed to submit report');
+      }
       
     } catch (error) {
-      console.error('Error submitting report:', error);
-      setIsSubmitting(false);
+      console.error('Error submitting counterfeit report:', error);
+      setSubmitError(error instanceof Error ? error.message : 'An unexpected error occurred');
     }
   };
 
@@ -91,10 +108,15 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
         <div className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
           <div className="text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Report Submitted</h3>
-            <p className="text-gray-600 mb-6">
-              Thank you for helping us fight counterfeits. 
-              {consentGiven ? ' The manufacturer has been notified with location details.' : ' Your report has been recorded.'}
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Report Submitted Successfully</h3>
+            <p className="text-gray-600 mb-4">
+              Thank you for helping us fight counterfeits. Your report has been recorded with ID: 
+              <strong className="font-mono text-sm"> {reportId}</strong>
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              {consentGiven 
+                ? 'The manufacturer has been notified with location details and will take appropriate action.' 
+                : 'Your report has been logged to help track counterfeit patterns.'}
             </p>
             <button
               onClick={onClose}
@@ -128,12 +150,22 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
         {/* Product Details */}
         <div className="bg-red-50 rounded-lg p-4 mb-6">
           <h3 className="font-semibold text-red-800 mb-2">Product Information</h3>
-          <p className="text-red-700"><strong>Product:</strong> {brand}</p>
+          <p className="text-red-700"><strong>Product:</strong> {productName || brand}</p>
           <p className="text-red-700"><strong>Serial Number:</strong> {serialNumber}</p>
           <p className="text-red-700 text-sm mt-2">
-            ⚠️ This product failed our authentication checks and appears to be counterfeit.
+            This product failed our authentication checks and appears to be counterfeit.
           </p>
         </div>
+
+        {/* Error Display */}
+        {submitError && (
+          <div className="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              <span>{submitError}</span>
+            </div>
+          </div>
+        )}
 
         {/* Location Consent Section */}
         {!showLocationConsent && !consentGiven && (
@@ -255,6 +287,7 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
                   value={locationData.purchasePrice}
                   onChange={(e) => handleInputChange('purchasePrice', e.target.value)}
                   placeholder="e.g., 250000"
+                  min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -276,16 +309,17 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
         <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            disabled={loading}
+            className="px-6 py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
           >
             Close
           </button>
           <button
             onClick={handleSubmitReport}
-            disabled={isSubmitting}
+            disabled={loading}
             className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
-            {isSubmitting ? (
+            {loading ? (
               <>
                 <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
                 <span>Submitting...</span>
@@ -304,6 +338,7 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentType> = ({
           <p className="text-xs text-gray-600">
             <strong>Privacy Note:</strong> This information helps manufacturers identify counterfeit distribution 
             networks. Only location details are shared - your personal information remains private and secure.
+            Report ID will be provided for tracking purposes.
           </p>
         </div>
       </div>

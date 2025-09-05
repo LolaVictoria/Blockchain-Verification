@@ -55,7 +55,7 @@ const ManufacturerAnalyticsDashboard = () => {
       trendsData.reduce((sum, day) => sum + day.successful + day.failed, 0)) * 100).toFixed(1) : '0'),
     
     avgSecurityScore: trendsData.length > 0 ? 
-      (trendsData.reduce((sum, day) => sum + day.securityScore, 0) / trendsData.length).toFixed(1) : '0'
+  (trendsData.reduce((sum, day) => sum + (day?.securityScore || 0), 0) / trendsData.length).toFixed(1) : '0'
   };
 
   // Filter device analytics
