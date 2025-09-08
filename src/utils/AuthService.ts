@@ -207,7 +207,7 @@ checkAuthStatus(): boolean {
         // Store user data
         const userData = response.data.user;
         localStorage.setItem('user', JSON.stringify(userData));
-        console.log(userData)
+        // console.log(userData)
         localStorage.setItem('user_role', userData.role);
 
         // Update state

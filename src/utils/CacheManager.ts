@@ -190,7 +190,6 @@ export class CacheManager {
   clearAllCaches(): void {
     Object.values(this.config).forEach(config => localStorage.removeItem(config.cacheKey));
     localStorage.removeItem('lastUpdateTimes');
-    console.log('Cleared all caches');
   }
 
   // Smart cache clearing strategies (from main.js)
@@ -213,7 +212,7 @@ export class CacheManager {
     if (strategy) {
       strategy();
     } else {
-      console.log(`No cache strategy for action: ${action}`);
+      console.warn(`No cache strategy for action: ${action}`);
     }
   }
 

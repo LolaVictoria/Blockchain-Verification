@@ -47,9 +47,9 @@ import { Link } from 'react-router-dom';
               <ChevronRight className="w-5 h-5" />
             </button>
               </Link>
-            <button className="border border-blue-500/30 text-blue-400 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-blue-500/10 transition-all duration-200">
+            {/* <button className="border border-blue-500/30 text-blue-400 px-8 py-4 rounded-xl text-lg font-semibold hover:bg-blue-500/10 transition-all duration-200">
               Watch Demo
-            </button>
+            </button> */}
           </div>
 
           {/* Floating Elements */}

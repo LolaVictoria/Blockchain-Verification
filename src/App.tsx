@@ -11,7 +11,6 @@ import Dashboard from './pages/dashboard';
 import NotFound from './pages/NotFound';
 import VerifyPage from './pages/verify';
 import { ProductGrid } from './components/manufacturerDashboard/productGrid';
-
 // import AdminDashboard from './pages/admin';
 // import ManufacturerDashboard from './pages/ManufacturerDashboard';
 

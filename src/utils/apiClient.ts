@@ -9,17 +9,11 @@ const getBaseURL = () => {
 };
 
 const BASE_URL = getBaseURL();
-// Your original interface - preserved exactly as is
-interface ApiResponse {
-  data: any;
-  status: number;
-}
 
 // Enhanced interface for new TypeScript usage
 export interface TypedApiResponse<T = any> {
   data: T;
   status: number;
-
 }
 
 export interface ApiError {
@@ -28,7 +22,7 @@ export interface ApiError {
   error?: string;
 }
 
-// Create axios instance with base configuration
+// axios instance with base configuration
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
   withCredentials: false, 
@@ -51,12 +45,12 @@ axiosInstance.interceptors.request.use(
           config.headers['Content-Type'] = 'application/json';
         }
         
-        console.log('API Request:', {
-          method: config.method?.toUpperCase(),
-          url: config.url,
-          baseURL: config.baseURL,
-          fullURL: `${config.baseURL}${config.url}`
-        });
+        // console.log('API Request:', {
+        //   method: config.method?.toUpperCase(),
+        //   url: config.url,
+        //   baseURL: config.baseURL,
+        //   fullURL: `${config.baseURL}${config.url}`
+        // });
         
         return config;
       },
@@ -174,20 +168,6 @@ const apiClient = {
     headers?: Record<string, any>
   ): Promise<TypedApiResponse<T>> => {
     return apiClient.request<T>(endpoint, 'DELETE', null, headers);
-  },
-
-  // Legacy compatibility - returns original ApiResponse format
-  requestLegacy: async (
-    endpoint: string,
-    method: string,
-    body?: Record<string, any> | null,
-    headers?: Record<string, any>
-  ): Promise<ApiResponse> => {
-    const response = await apiClient.request(endpoint, method as any, body, headers);
-    return {
-      data: response.data,
-      status: response.status
-    };
   },
 
   // Utility methods

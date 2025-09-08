@@ -64,7 +64,6 @@ const EditProfile: React.FC<EditProfileProps> = ({ onClose, userRole }) => {
   // Load profile data from user object
   useEffect(() => {
     if (user && !dataLoaded) {
-      console.log('Loading profile data from user:', user);
       setProfileData({
         emails: user.emails?.map((email: string) => ({
           email,

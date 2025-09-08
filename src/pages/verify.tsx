@@ -59,13 +59,8 @@ const handleVerifyDevice = async () => {
     const result = await verifyProduct(serialNumber);
     setVerificationResult(result);
     
-    // Debug logs
-    console.log('Verification result:', result);
-    console.log('Is authentic:', result.authentic);
-    
     // SIMPLE: Show alert for any non-authentic product
     if (!result.authentic) {
-      console.log('Showing counterfeit alert');
       setShowCounterfeitAlert(true);
     } else {
       setShowCounterfeitAlert(false);

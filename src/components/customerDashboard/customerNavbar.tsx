@@ -27,7 +27,6 @@ export const CustomerNavbar: React.FC<CustomerNavbarProps> = ({
     setIsRefreshing(true);
     try {
       await onRefreshProfile();
-      console.log('Profile refreshed successfully');
     } catch (error) {
       console.error('Failed to refresh profile:', error);
     } finally {
@@ -113,7 +112,7 @@ export const CustomerNavbar: React.FC<CustomerNavbarProps> = ({
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="origin-top-right absolute right-0 mt-2 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
                       {/* User Info */}
                       <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">

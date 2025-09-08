@@ -9,28 +9,20 @@ export const useVerification = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debug: Check if verificationService is properly imported
-  console.log('verificationService:', verificationService);
-  
   const clearError = () => {
     setError(null);
   };
 
   const verifyProduct = async (serialNumber: string): Promise<VerificationResult> => {
-    console.log('verifyProduct called with:', serialNumber);
     setIsLoading(true);
     setError(null);
 
     try {
-      // Debug: Check if verifyDevice method exists
-      console.log('VerificationService.verifyDevice:', verificationService.verifyProduct);
-      
       if (!verificationService.verifyProduct) {
         throw new Error('VerificationService.verifyProduct is not available');
       }
 
       const result = await verificationService.verifyProduct(serialNumber);
-      console.log('Verification result:', result);
       return result;
     } catch (err) {
       console.error('Verification error:', err);
@@ -43,7 +35,6 @@ export const useVerification = () => {
   };
 
   const verifyBatch = async (serialNumbers: string[]): Promise<BatchVerificationResult> => {
-    console.log('verifyBatch called with:', serialNumbers);
     setIsLoading(true);
     setError(null);
 
@@ -53,7 +44,6 @@ export const useVerification = () => {
       }
 
       const result = await verificationService.verifyBatch(serialNumbers);
-      console.log('Batch verification result:', result);
       return result;
     } catch (err) {
       console.error('Batch verification error:', err);
@@ -66,7 +56,6 @@ export const useVerification = () => {
   };
 
   const loadSampleData = async (): Promise<SampleData> => {
-    console.log('loadSampleData called');
     setIsLoading(true);
     setError(null);
 
@@ -76,7 +65,6 @@ export const useVerification = () => {
       }
 
       const result = await verificationService.loadSampleData();
-      console.log('Sample data result:', result);
       return result;
     } catch (err) {
       console.error('Load sample data error:', err);
@@ -89,7 +77,6 @@ export const useVerification = () => {
   };
 
   const getOwnershipHistory = async (serialNumber: string): Promise<{ history: OwnershipRecord[] }> => {
-    console.log('getOwnershipHistory called with:', serialNumber);
     setIsLoading(true);
     setError(null);
 
@@ -99,7 +86,6 @@ export const useVerification = () => {
       }
 
       const result = await verificationService.getOwnershipHistory(serialNumber);
-      console.log('Ownership history result:', result);
       return result;
     } catch (err) {
       console.error('Get ownership history error:', err);

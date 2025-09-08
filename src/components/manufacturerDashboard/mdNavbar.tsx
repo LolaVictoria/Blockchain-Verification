@@ -27,13 +27,13 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
     setIsRefreshing(true);
     try {
       await onRefreshProfile();
-      console.log('Profile refreshed successfully');
     } catch (error) {
       console.error('Failed to refresh profile:', error);
     } finally {
       setIsRefreshing(false);
     }
   };
+
 
   const handleProductsClick = () => {
     navigate(`/dashboard/${user.role}/${user.id}/products`);
@@ -44,7 +44,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo/Brand */}
-          <Link to={`/dashboard/${user.role}/${user.id}`} className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
               <Shield className="w-5 h-5 text-white" />
             </div>
@@ -116,7 +116,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({
 
                 {/* Dropdown Menu */}
                 {isDropdownOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <div className="origin-top-right absolute right-0 mt-2  rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
                     <div className="py-1">
                       {/* User Info */}
                       <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">

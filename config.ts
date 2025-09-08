@@ -176,14 +176,14 @@ export const DEVICE_TYPE_CONFIG = {
 };
 
 // Notification utilities
-export const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-  // This can be integrated with your notification system
-  console.log(`${type.toUpperCase()}: ${message}`);
+// export const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+//   // This can be integrated with your notification system
+//   // console.log(`${type.toUpperCase()}: ${message}`);
   
-  // You can integrate with toast libraries like react-hot-toast:
-  // import toast from 'react-hot-toast';
-  // toast[type](message);
-};
+//   // You can integrate with toast libraries like react-hot-toast:
+//   // import toast from 'react-hot-toast';
+//   // toast[type](message);
+// };
 
 // Analytics event tracking (for user behavior analytics)
 export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
@@ -215,6 +215,6 @@ export default {
   isValidEmail,
   getCachedData,
   setCachedData,
-  showNotification,
+  // showNotification,
   trackEvent
 };
