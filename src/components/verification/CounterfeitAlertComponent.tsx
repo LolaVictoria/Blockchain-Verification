@@ -1,7 +1,7 @@
 // components/verification/CounterfeitAlertComponent.tsx
 import React, { useState } from 'react';
 import { AlertTriangle, MapPin, Send, X, CheckCircle } from 'lucide-react';
-import { useAnalytics } from '../../hooks/useAnalytics';
+import { useCustomerAnalytics } from '../../hooks/useAnalytics';
 import type { CounterfeitReportData } from '../../utils/AnalyticsService';
 
 interface CounterfeitAlertComponentProps {
@@ -9,7 +9,7 @@ interface CounterfeitAlertComponentProps {
   brand: string;
   productName?: string;
   onClose: () => void;
-  onReportSuccess?: (reportId: string) => void;
+  onReportSuccess?: (reportId?: string) => void;
 }
 
 const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({ 
@@ -19,11 +19,13 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({
   onClose,
   onReportSuccess
 }) => {
-  const { submitCounterfeitReport, loading } = useAnalytics();
+  const { submitCounterfeitReport, loading } = useCustomerAnalytics();
   
   const [showLocationConsent, setShowLocationConsent] = useState(false);
   const [consentGiven, setConsentGiven] = useState(false);
   const [locationData, setLocationData] = useState({
+    deviceCategory: '',
+    productName: productName || brand || '',
     storeName: '',
     storeAddress: '',
     city: '',
@@ -34,7 +36,7 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({
   });
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [reportId, setReportId] = useState<string>('');
+  const [reportId, setReportId] = useState<string | undefined>('');
 
   const handleLocationConsentClick = () => {
     setShowLocationConsent(true);
@@ -60,9 +62,19 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({
   const handleSubmitReport = async () => {
     setSubmitError(null);
     
+    if (!locationData.productName.trim()) {
+      setSubmitError('Product name is required');
+      return;
+    }
+
+    if (!locationData.deviceCategory) {
+      setSubmitError('Device category is required');
+      return;
+    }
     const reportData: CounterfeitReportData = {
       serialNumber,
-      productName: productName || brand,
+       productName: locationData.productName.trim(),
+       deviceCategory: locationData.deviceCategory,
       customerConsent: consentGiven,
       locationData: consentGiven ? {
         ...locationData,
@@ -148,10 +160,58 @@ const CounterfeitAlertComponent: React.FC<CounterfeitAlertComponentProps> = ({
         </div>
 
         {/* Product Details */}
+        {/* Product Details - Make it editable */}
         <div className="bg-red-50 rounded-lg p-4 mb-6">
           <h3 className="font-semibold text-red-800 mb-2">Product Information</h3>
-          <p className="text-red-700"><strong>Product:</strong> {productName || brand}</p>
-          <p className="text-red-700"><strong>Serial Number:</strong> {serialNumber}</p>
+          
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">Product Name</label>
+              <input
+                type="text"
+                value={locationData.productName}
+                onChange={(e) => handleInputChange('productName', e.target.value)}
+                placeholder="e.g., iPhone 14 Pro, Samsung Galaxy S23"
+                className="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">Device Category</label>
+              <select
+                value={locationData.deviceCategory}
+                onChange={(e) => handleInputChange('deviceCategory', e.target.value)}
+                className="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-white"
+                required
+              >
+                <option value="">Select a category...</option>
+                <option value="smartphone">Smartphone</option>
+                <option value="laptop">Laptop</option>
+                <option value="tablet">Tablet</option>
+                <option value="smartwatch">Smart Watch</option>
+                <option value="headphones">Headphones</option>
+                <option value="gaming">Gaming Console</option>
+                <option value="camera">Camera</option>
+                <option value="tv">Television</option>
+                <option value="audio">Audio Equipment</option>
+                <option value="wearables">Wearables</option>
+                <option value="accessories">Accessories</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-red-700 mb-1">Serial Number</label>
+              <input
+                type="text"
+                value={serialNumber}
+                readOnly
+                className="w-full px-3 py-2 border border-red-300 rounded-lg bg-red-100 text-red-700"
+              />
+            </div>
+          </div>
+          
           <p className="text-red-700 text-sm mt-2">
             This product failed our authentication checks and appears to be counterfeit.
           </p>

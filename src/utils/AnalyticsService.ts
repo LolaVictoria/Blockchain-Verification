@@ -1,24 +1,23 @@
-// utils/AnalyticsService.ts - Updated to use apiClient
 import apiClient from './apiClient';
-import { getCurrentUser, getUserRole } from '../../config';
+import { getCurrentUser } from '../../config';
 
-// Type definitions from your backend
+// Core Analytics Interfaces
 export interface VerificationTrend {
   date: string;
-  successful: number;
-  failed: number;
-  responseTime: number;
-  transactions: number;
   totalAttempts: number;
-  securityScore?: number;
+  successful: number;
+  counterfeit: number;
+  responseTime: number;
 }
 
-export interface KPIs {
-  verificationAccuracy: number;
-  avgResponseTime: number;
-  transactionEfficiency: number;
+export interface kpis {
   totalAttempts: number;
   successfulVerifications: number;
+  totalCounterfeit: number;
+  verificationAccuracy: number;
+  counterfeitRate: number;
+  avgResponseTime: number;
+  transactionEfficiency: number;
 }
 
 export interface DeviceAnalytic {
@@ -31,8 +30,7 @@ export interface DeviceAnalytic {
 
 export interface CustomerEngagement {
   date: string;
-  newCustomers: number;
-  returningCustomers: number;
+  activeCustomers: number;
   totalVerifications: number;
   avgSatisfaction: number;
 }
@@ -56,25 +54,46 @@ export interface CustomerDeviceBreakdown {
   count: number;
   authentic: number;
   counterfeit: number;
-  color: string;
+  color?: string;
 }
 
-export interface SecurityMetric {
-  name: string;
-  score: number;
+export interface VerificationLog {
+  serialNumber: string;
+  deviceName: string;
+  deviceCategory: string;
+  status: string;
+  date: string;
+  time: string;
+  confidence: number;
+  verificationMethod: string;
+  customerId?: string; 
+  counterfeitId?: string;  
 }
 
-export interface ManufacturerOverview {
-  totalProducts: number;
-  totalVerifications: number;
-  counterfeitRate: number;
-  activeCustomers: number;
+export interface CounterfeitReport {
+  reportId: string;
+  serialNumber: string;
+  productName: string;
+  deviceCategory: string;
+  location: string;
+  storeName: string;
+  storeAddress: string;
+  purchaseDate: string;
+  purchasePrice: number;
+  reportDate: string;
+  status: string;
+  additionalNotes: string;
+  customerId: string;  
+  verificationId?: string; 
 }
+
+
 
 export interface CounterfeitReportData {
   serialNumber: string;
   productName?: string;
   customerConsent: boolean;
+  deviceCategory: string;
   locationData?: {
     storeName?: string;
     storeAddress?: string;
@@ -87,31 +106,70 @@ export interface CounterfeitReportData {
 }
 
 class AnalyticsService {
-  // Manufacturer Analytics
-  async getVerificationAnalytics(timeRange: string, deviceType?: string): Promise<{
+  private getManufacturerId(): string {
+    const user = getCurrentUser();
+    if (!user?.id) {
+      throw new Error('Manufacturer ID not found');
+    }
+    return user.id;
+  }
+
+  private getCustomerId(): string {
+    const user = getCurrentUser();
+    if (!user?.id) {
+      throw new Error('Customer ID not found');
+    }
+    return user.id;
+  }
+
+  private handleError(error: any): Error {
+    if (error.response?.data?.error) {
+      return new Error(error.response.data.error);
+    }
+    return new Error('Analytics service error occurred');
+  }
+
+  // MANUFACTURER ANALYTICS
+  
+  async getManufacturerOverview(timeRange: string = '30d'): Promise<{ kpis: kpis }> {
+    try {
+      const params = new URLSearchParams({
+        manufacturerId: this.getManufacturerId(),
+        timeRange
+      });
+
+      const response = await apiClient.get<{ kpis: kpis }>(
+        `/analytics/manufacturer/overview?${params}`
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get manufacturer overview:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  async getVerificationTrends(timeRange: string): Promise<{
     verificationTrends: VerificationTrend[];
-    kpis: KPIs;
   }> {
     try {
       const params = new URLSearchParams({
         timeRange,
-        ...(deviceType && deviceType !== 'all' && { deviceType }),
         manufacturerId: this.getManufacturerId(),
       });
 
       const response = await apiClient.get<{
         verificationTrends: VerificationTrend[];
-        kpis: KPIs;
-      }>(`/analytics/verifications?${params}`);
+      }>(`/analytics/manufacturer/verification-trends?${params}`);
 
       return response.data;
     } catch (error) {
-      console.error('Failed to get verification analytics:', error);
+      console.error('Failed to get verification trends:', error);
       throw this.handleError(error);
     }
   }
 
-  async getDeviceAnalytics(timeRange: string): Promise<{
+  async getManufacturerDeviceAnalytics(timeRange: string): Promise<{
     deviceVerifications: DeviceAnalytic[];
   }> {
     try {
@@ -122,11 +180,11 @@ class AnalyticsService {
 
       const response = await apiClient.get<{
         deviceVerifications: DeviceAnalytic[];
-      }>(`/analytics/devices?${params}`);
+      }>(`/analytics/manufacturer/device-analytics?${params}`);
 
       return response.data;
     } catch (error) {
-      console.error('Failed to get device analytics:', error);
+      console.error('Failed to get manufacturer device analytics:', error);
       throw this.handleError(error);
     }
   }
@@ -142,7 +200,7 @@ class AnalyticsService {
 
       const response = await apiClient.get<{
         customerEngagement: CustomerEngagement[];
-      }>(`/analytics/customers?${params}`);
+      }>(`/analytics/manufacturer/customer-engagement?${params}`);
 
       return response.data;
     } catch (error) {
@@ -162,7 +220,7 @@ class AnalyticsService {
 
       const response = await apiClient.get<{
         counterfeitLocations: CounterfeitLocation[];
-      }>(`/analytics/counterfeit-locations?${params}`);
+      }>(`/analytics/manufacturer/counterfeit-locations?${params}`);
 
       return response.data;
     } catch (error) {
@@ -171,72 +229,10 @@ class AnalyticsService {
     }
   }
 
-  async getSecurityMetrics(): Promise<{
-    securityMetrics: SecurityMetric[];
-    overallSecurityScore: number;
-  }> {
-    try {
-      const params = new URLSearchParams({
-        manufacturerId: this.getManufacturerId(),
-      });
+  // CUSTOMER ANALYTICS
 
-      const response = await apiClient.get<{
-        securityMetrics: SecurityMetric[];
-        overallSecurityScore: number;
-      }>(`/analytics/security-metrics?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get security metrics:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getManufacturerOverview(): Promise<{
-    overview: ManufacturerOverview;
-    topProducts: Array<{
-      name: string;
-      brand: string;
-      model: string;
-      verifications: number;
-      authenticityRate: number;
-    }>;
-  }> {
-    try {
-      const params = new URLSearchParams({
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        overview: ManufacturerOverview;
-        topProducts: Array<{
-          name: string;
-          brand: string;
-          model: string;
-          verifications: number;
-          authenticityRate: number;
-        }>;
-      }>(`/analytics/manufacturer-overview?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get manufacturer overview:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  // Customer Analytics
-  async getCustomerPersonalAnalytics(timeRange: string): Promise<{
+  async getCustomerOverview(timeRange: string): Promise<{
     customerHistory: CustomerVerificationHistory[];
-    deviceBreakdown: CustomerDeviceBreakdown[];
-    recentVerifications: Array<{
-      serialNumber: string;
-      product: string;
-      status: string;
-      date: string;
-      time: string;
-      confidence: number;
-    }>;
   }> {
     try {
       const customerId = this.getCustomerId();
@@ -244,29 +240,75 @@ class AnalyticsService {
 
       const response = await apiClient.get<{
         customerHistory: CustomerVerificationHistory[];
-        deviceBreakdown: CustomerDeviceBreakdown[];
-        recentVerifications: Array<{
-          serialNumber: string;
-          product: string;
-          status: string;
-          date: string;
-          time: string;
-          confidence: number;
-        }>;
-      }>(`/analytics/customer/${customerId}?${params}`);
+      }>(`/analytics/customer/${customerId}/overview?${params}`);
 
       return response.data;
     } catch (error) {
-      console.error('Failed to get customer analytics:', error);
+      console.error('Failed to get customer overview:', error);
       throw this.handleError(error);
     }
   }
 
-  // Counterfeit Reporting
+  async getCustomerDeviceBreakdown(timeRange: string): Promise<{
+    deviceBreakdown: CustomerDeviceBreakdown[];
+  }> {
+    try {
+      const customerId = this.getCustomerId();
+      const params = new URLSearchParams({ timeRange });
+
+      const response = await apiClient.get<{
+        deviceBreakdown: CustomerDeviceBreakdown[];
+      }>(`/analytics/customer/${customerId}/device-breakdown?${params}`);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get customer device breakdown:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  async getCustomerVerificationLogs(limit: number = 20): Promise<{
+    verificationLogs: VerificationLog[];
+  }> {
+    try {
+      const customerId = this.getCustomerId();
+      const params = new URLSearchParams({ limit: limit.toString() });
+
+      const response = await apiClient.get<{
+        verificationLogs: VerificationLog[];
+      }>(`/analytics/customer/${customerId}/verification-logs?${params}`);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get customer verification logs:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  async getCustomerCounterfeitReports(timeRange: string): Promise<{
+    counterfeitReports: CounterfeitReport[];
+  }> {
+    try {
+      const customerId = this.getCustomerId();
+      const params = new URLSearchParams({ timeRange });
+
+      const response = await apiClient.get<{
+        counterfeitReports: CounterfeitReport[];
+      }>(`/analytics/customer/${customerId}/counterfeit-reports?${params}`);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get customer counterfeit reports:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  // SHARED UTILITIES
+
   async submitCounterfeitReport(reportData: CounterfeitReportData): Promise<{
     success: boolean;
     message: string;
-    reportId: string;
+    reportId?: string;
   }> {
     try {
       const customerId = this.getCustomerId();
@@ -275,7 +317,7 @@ class AnalyticsService {
       const response = await apiClient.post<{
         success: boolean;
         message: string;
-        reportId: string;
+        reportId?: string;
       }>(`/counterfeit-reports?${params}`, reportData);
 
       return response.data;
@@ -285,302 +327,82 @@ class AnalyticsService {
     }
   }
 
-  // Performance and Trends
-  async getAnalyticsTrends(timeRange: string): Promise<{
-    hourlyTrends: Array<{
-      hour: string;
-      verifications: number;
-      authentic: number;
-      avgResponseTime: number;
-    }>;
-    geographicDistribution: Array<{
-      location: string;
-      verifications: number;
-      authenticityRate: number;
-    }>;
-  }> {
-    try {
-      const params = new URLSearchParams({
-        timeRange,
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        hourlyTrends: Array<{
-          hour: string;
-          verifications: number;
-          authentic: number;
-          avgResponseTime: number;
-        }>;
-        geographicDistribution: Array<{
-          location: string;
-          verifications: number;
-          authenticityRate: number;
-        }>;
-      }>(`/analytics/trends?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get analytics trends:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getPerformanceAlerts(): Promise<{
-    alerts: Array<{
-      type: string;
-      title: string;
-      message: string;
-      severity: string;
-    }>;
-  }> {
-    try {
-      const params = new URLSearchParams({
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        alerts: Array<{
-          type: string;
-          title: string;
-          message: string;
-          severity: string;
-        }>;
-      }>(`/analytics/performance-alerts?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get performance alerts:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getRealTimeStatus(): Promise<{
-    realTimeStatus: {
-      recentActivity: number;
-      totalProducts: number;
-      blockchainHealth: boolean;
-      uptimePercentage: number;
-      lastVerification: string | null;
-      systemStatus: 'healthy' | 'degraded' | 'critical';
-    };
-  }> {
-    try {
-      const params = new URLSearchParams({
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        realTimeStatus: {
-          recentActivity: number;
-          totalProducts: number;
-          blockchainHealth: boolean;
-          uptimePercentage: number;
-          lastVerification: string | null;
-          systemStatus: 'healthy' | 'degraded' | 'critical';
-        };
-      }>(`/analytics/real-time-status?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get real-time status:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  async getComparisonAnalytics(timeRange: string): Promise<{
-    currentPeriod: {
-      verifications: number;
-      authenticityRate: number;
-      avgResponseTime: number;
-      activeCustomers: number;
-      avgSatisfaction: number;
-    };
-    previousPeriod: {
-      verifications: number;
-      authenticityRate: number;
-      avgResponseTime: number;
-      activeCustomers: number;
-      avgSatisfaction: number;
-    };
-    changes: {
-      verifications: number;
-      authenticityRate: number;
-      avgResponseTime: number;
-      activeCustomers: number;
-      avgSatisfaction: number;
-    };
-  }> {
-    try {
-      const params = new URLSearchParams({
-        timeRange,
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        currentPeriod: {
-          verifications: number;
-          authenticityRate: number;
-          avgResponseTime: number;
-          activeCustomers: number;
-          avgSatisfaction: number;
-        };
-        previousPeriod: {
-          verifications: number;
-          authenticityRate: number;
-          avgResponseTime: number;
-          activeCustomers: number;
-          avgSatisfaction: number;
-        };
-        changes: {
-          verifications: number;
-          authenticityRate: number;
-          avgResponseTime: number;
-          activeCustomers: number;
-          avgSatisfaction: number;
-        };
-      }>(`/analytics/comparison?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get comparison analytics:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  // Export functionality
-  async exportAnalyticsData(
-    exportType: 'verifications' | 'customers' | 'reports', 
-    format: 'json' | 'csv', 
-    timeRange: string
-  ): Promise<{
+  async recordVerificationAttempt(verificationData: {
+    serialNumber: string;
+    customerId?: string;
+    isAuthentic: boolean;
+    responseTime: number;
+    confidenceScore?: number;
+    verificationMethod: string;
+     deviceName?: string;    
+    deviceCategory?: string;  
+    brand?: string;         
+    source?: 'blockchain' | 'database';
+  }): Promise<{
     success: boolean;
-    data: any[];
-    count: number;
-    generated_at: string;
+    verificationId: string;
   }> {
     try {
       const response = await apiClient.post<{
         success: boolean;
-        data: any[];
-        count: number;
-        generated_at: string;
-      }>('/analytics/export', {
-        manufacturerId: this.getManufacturerId(),
-        type: exportType,
-        format,
-        timeRange,
-      });
+        verificationId: string;
+      }>('/analytics/record-verification', verificationData);
 
       return response.data;
+    } catch (error) {
+      console.error('Failed to record verification attempt:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  // UTILITY METHODS
+
+  async exportAnalyticsData(type: 'manufacturer' | 'customer', timeRange: string): Promise<Blob> {
+    try {
+      const endpoint = type === 'manufacturer' 
+        ? '/analytics/manufacturer/export' 
+        : '/analytics/customer/export';
+      
+      const params = new URLSearchParams({ timeRange });
+      if (type === 'manufacturer') {
+        params.append('manufacturerId', this.getManufacturerId());
+      } else {
+        params.append('customerId', this.getCustomerId());
+      }
+
+      const response = await apiClient.get(`${endpoint}?${params}`, {
+        responseType: 'blob'
+      });
+
+      return new Blob([response.data], { type: 'application/csv' });
     } catch (error) {
       console.error('Failed to export analytics data:', error);
       throw this.handleError(error);
     }
   }
 
-  // Health check
-  async checkHealth(): Promise<{
-    status: string;
-    database: string;
-    collections: {
-      verifications: number;
-      products: number;
-      users: number;
-    };
-    timestamp: string;
-  }> {
-    try {
-      const response = await apiClient.get<{
-        status: string;
-        database: string;
-        collections: {
-          verifications: number;
-          products: number;
-          users: number;
-        };
-        timestamp: string;
-      }>('/analytics/health');
+  // VALIDATION HELPERS
 
-      return response.data;
-    } catch (error) {
-      console.error('Failed to check health:', error);
-      throw this.handleError(error);
-    }
+  validateTimeRange(timeRange: string): boolean {
+    const validRanges = ['7d', '30d', '90d', '1y'];
+    return validRanges.includes(timeRange);
   }
 
-  // Record verification attempts (for analytics tracking)
-  async recordVerificationAttempt(data: {
-    serialNumber: string;
-    productId?: string;
-    customerId?: string;
-    isAuthentic: boolean;
-    responseTime: number;
-    source: 'blockchain' | 'database';
-    confidenceScore?: number;
-    verificationMethod?: 'qr_code' | 'nfc' | 'manual' | 'batch';
-    deviceInfo?: {
-      userAgent: string;
-      ipAddress?: string;
-      location?: {
-        latitude?: number;
-        longitude?: number;
-        country?: string;
-        state?: string;
-      };
-    };
-  }): Promise<{ success: boolean; verificationId: string }> {
-    try {
-      const response = await apiClient.post<{ 
-        success: boolean; 
-        verificationId: string 
-      }>('/analytics/record-verification', {
-        ...data,
-        createdAt: new Date().toISOString(),
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to record verification attempt:', error);
-      // Don't throw error for analytics recording failures
-      return { success: false, verificationId: '' };
+  formatMetricValue(value: number, type: 'percentage' | 'currency' | 'number' | 'time'): string {
+    switch (type) {
+      case 'percentage':
+        return `${value.toFixed(1)}%`;
+      case 'currency':
+        return `$${value.toLocaleString()}`;
+      case 'time':
+        return `${value.toFixed(2)}s`;
+      case 'number':
+      default:
+        return value.toLocaleString();
     }
-  }
-
-  // Helper methods using your config utilities
-  private getManufacturerId(): string {
-    const user = getCurrentUser();
-    const role = getUserRole();
-    
-    if (role === 'manufacturer' && user) {
-      return user.id || user._id || '';
-    }
-    throw new Error('User is not a manufacturer');
-  }
-
-  private getCustomerId(): string {
-    const user = getCurrentUser();
-    const role = getUserRole();
-    
-    if (role === 'customer' && user) {
-      return user.id || user._id || '';
-    }
-    throw new Error('User is not a customer');
-  }
-
-  private handleError(error: any): Error {
-    if (error.message) {
-      return new Error(error.message);
-    }
-    if (error.response?.data?.error) {
-      return new Error(error.response.data.error);
-    }
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
-    }
-    return new Error('An unexpected error occurred');
   }
 }
 
-export const analyticsService = new AnalyticsService();
-export default AnalyticsService;
+// Export singleton instance
+const analyticsService = new AnalyticsService();
+export default analyticsService;

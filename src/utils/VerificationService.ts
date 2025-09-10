@@ -1,7 +1,7 @@
 // utils/VerificationService.ts - Updated to use apiClient with analytics integration
 import apiClient from './apiClient';
 import { getCurrentUser } from '../../config';
-import { analyticsService } from './AnalyticsService';
+import analyticsService  from './AnalyticsService';
 
 export interface VerificationResult {
   serialNumber: string;
@@ -24,7 +24,9 @@ export interface VerificationResult {
   };
   confidence_score?: number;
   response_time?: number;
+  verificationId?: string; 
 }
+
 
 export interface BatchVerificationResult {
   total_checked: number;
@@ -62,14 +64,18 @@ class VerificationService {
         response_time: responseTime,
       };
 
-      // Record this verification attempt for analytics
-      this.recordVerificationForAnalytics({
+      // Record this verification attempt for analytics with enhanced data
+      await this.recordVerificationForAnalytics({
         serialNumber,
         isAuthentic: result.authentic,
         responseTime,
         source: result.source === 'not_found' ? 'database' : result.source,
         confidenceScore: result.confidence_score,
         verificationMethod: 'manual',
+        deviceName: result.model || result.brand || 'Unknown Product',
+        deviceCategory: result.deviceType || 'Unknown Category',
+        brand: result.brand || result.manufacturerName || 'Unknown Brand',
+        verificationId: result.verificationId  // Pass verification ID for potential counterfeit linking
       });
 
       return result;
@@ -78,18 +84,23 @@ class VerificationService {
       const responseTime = (endTime - startTime) / 1000;
 
       // Record failed verification attempt
-      this.recordVerificationForAnalytics({
+      await this.recordVerificationForAnalytics({
         serialNumber,
         isAuthentic: false,
         responseTime,
         source: 'database',
         verificationMethod: 'manual',
+        deviceName: 'Unknown Product',
+        deviceCategory: 'Unknown Category',
+        brand: 'Unknown Brand'
       });
 
       console.error('Failed to verify product:', error);
       throw this.handleError(error);
     }
   }
+
+
 
   async verifyBatch(serialNumbers: string[]): Promise<BatchVerificationResult> {
     const startTime = performance.now();
@@ -114,6 +125,9 @@ class VerificationService {
           source: verification.source === 'not_found' ? 'database' : verification.source,
           confidenceScore: verification.confidence_score,
           verificationMethod: 'batch',
+          deviceName: verification.model || verification.brand || 'Unknown Product',
+          deviceCategory: verification.deviceType || 'Unknown Category',
+          brand: verification.brand || verification.manufacturerName || 'Unknown Brand'
         })
       );
 
@@ -134,6 +148,9 @@ class VerificationService {
           responseTime: avgResponseTime,
           source: 'database',
           verificationMethod: 'batch',
+          deviceName: 'Unknown Product',
+          deviceCategory: 'Unknown Category',
+          brand: 'Unknown Brand'
         })
       );
 
@@ -170,159 +187,6 @@ class VerificationService {
     }
   }
 
-  // QR Code verification
-  async verifyQRCode(qrData: string): Promise<VerificationResult> {
-    const startTime = performance.now();
-    
-    try {
-      const response = await apiClient.post<VerificationResult>('/verify/qr', {
-        qr_data: qrData
-      });
-
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      const result = {
-        ...response.data,
-        response_time: responseTime,
-      };
-
-      // Record QR verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: result.serialNumber,
-        isAuthentic: result.authentic,
-        responseTime,
-        source: result.source === 'not_found' ? 'database' : result.source,
-        confidenceScore: result.confidence_score,
-        verificationMethod: 'qr_code',
-      });
-
-      return result;
-    } catch (error) {
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      // Record failed QR verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: 'unknown',
-        isAuthentic: false,
-        responseTime,
-        source: 'database',
-        verificationMethod: 'qr_code',
-      });
-
-      console.error('Failed to verify QR code:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  // NFC verification
-  async verifyNFC(nfcData: string): Promise<VerificationResult> {
-    const startTime = performance.now();
-    
-    try {
-      const response = await apiClient.post<VerificationResult>('/verify/nfc', {
-        nfc_data: nfcData
-      });
-
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      const result = {
-        ...response.data,
-        response_time: responseTime,
-      };
-
-      // Record NFC verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: result.serialNumber,
-        isAuthentic: result.authentic,
-        responseTime,
-        source: result.source === 'not_found' ? 'database' : result.source,
-        confidenceScore: result.confidence_score,
-        verificationMethod: 'nfc',
-      });
-
-      return result;
-    } catch (error) {
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      // Record failed NFC verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: 'unknown',
-        isAuthentic: false,
-        responseTime,
-        source: 'database',
-        verificationMethod: 'nfc',
-      });
-
-      console.error('Failed to verify NFC:', error);
-      throw this.handleError(error);
-    }
-  }
-
-  // Image-based verification (if you implement computer vision)
-  async verifyProductImage(imageFile: File, serialNumber?: string): Promise<VerificationResult> {
-    const startTime = performance.now();
-    
-    try {
-      const formData = new FormData();
-      formData.append('image', imageFile);
-      if (serialNumber) {
-        formData.append('serialNumber', serialNumber);
-      }
-
-      // Note: For FormData, we need to use a different approach
-      const token = localStorage.getItem('authToken');
-      const headers: Record<string, string> = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await apiClient.request<VerificationResult>(
-        '/verify/image',
-        'POST',
-        formData as any,
-        headers
-      );
-
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      const result = {
-        ...response.data,
-        response_time: responseTime,
-      };
-
-      // Record image verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: result.serialNumber || serialNumber || 'unknown',
-        isAuthentic: result.authentic,
-        responseTime,
-        source: result.source === 'not_found' ? 'database' : result.source,
-        confidenceScore: result.confidence_score,
-        verificationMethod: 'manual', // or create 'image' type
-      });
-
-      return result;
-    } catch (error) {
-      const endTime = performance.now();
-      const responseTime = (endTime - startTime) / 1000;
-
-      // Record failed image verification attempt
-      this.recordVerificationForAnalytics({
-        serialNumber: serialNumber || 'unknown',
-        isAuthentic: false,
-        responseTime,
-        source: 'database',
-        verificationMethod: 'manual',
-      });
-
-      console.error('Failed to verify product image:', error);
-      throw this.handleError(error);
-    }
-  }
 
   // Bulk verification by uploading a CSV file
   async verifyBulkCSV(csvFile: File): Promise<{
@@ -374,6 +238,9 @@ class VerificationService {
           source: verification.source === 'not_found' ? 'database' : verification.source,
           confidenceScore: verification.confidence_score,
           verificationMethod: 'batch',
+          deviceName: verification.model || verification.brand || 'Unknown Product',
+          deviceCategory: verification.deviceType || 'Unknown Category',
+          brand: verification.brand || verification.manufacturerName || 'Unknown Brand'
         })
       );
 
@@ -388,20 +255,32 @@ class VerificationService {
   }
 
   // Private helper methods
+  
   private async recordVerificationForAnalytics(data: {
     serialNumber: string;
     isAuthentic: boolean;
     responseTime: number;
     source: 'blockchain' | 'database';
     confidenceScore?: number;
-    verificationMethod: 'qr_code' | 'nfc' | 'manual' | 'batch';
+    verificationMethod: string;
+    deviceName: string;
+    deviceCategory: string;
+    brand: string;
+    verificationId?: string;
   }) {
     try {
       const user = getCurrentUser();
-      await analyticsService.recordVerificationAttempt({
+      const response = await analyticsService.recordVerificationAttempt({
         ...data,
         customerId: user?.id || user?._id,
       });
+      
+      // Store verification ID locally if needed for counterfeit reporting
+      if (response.verificationId) {
+        sessionStorage.setItem(`verification_${data.serialNumber}`, response.verificationId);
+      }
+      
+      return response;
     } catch (analyticsError) {
       console.warn('Failed to record verification for analytics:', analyticsError);
       // Don't throw - analytics failures shouldn't break verification

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar } from 'recharts';
-import { Shield, CheckCircle, Clock, Package, AlertTriangle, TrendingUp } from 'lucide-react';
+import { CheckCircle, Clock, Package, AlertTriangle } from 'lucide-react';
 import MetricCard from "./metricCard";
-import { useAnalytics } from '../../hooks/useAnalytics';
-import type { 
-  CustomerVerificationHistory, 
-  CustomerDeviceBreakdown 
-} from '../../utils/AnalyticsService';
+import { useCustomerAnalytics } from '../../hooks/useAnalytics';
+import {VerificationHistoryChart} from './customer/verificationHistoryChart';
+import { DeviceBreakdownChart } from './customer/deviceBreakdownChart';
+// import { PlatformTrustSection } from './customer/platformTrustSection';
+import { VerificationLogsTable } from './customer/verificationLogsTable';
+import { CounterfeitReportsTable } from './customer/counterfeitReportsTable';
+import { CustomerInsights } from './customer/customerInsights';
 
 const CustomerAnalyticsDashboard = () => {
   const [timeRange, setTimeRange] = useState<string>('30d');
@@ -16,42 +17,33 @@ const CustomerAnalyticsDashboard = () => {
     error,
     customerHistory,
     customerDevices,
+    verificationLogs,
+    counterfeitReports,
     loadCustomerAnalytics,
     setError
-  } = useAnalytics(timeRange);
+  } = useCustomerAnalytics(timeRange);
 
-  // Load data when component mounts or timeRange changes
   useEffect(() => {
     loadCustomerAnalytics();
   }, [loadCustomerAnalytics]);
 
-  // Platform trust indicators (static data - can be moved to API later)
-  const platformTrustMetrics = [
-    { metric: 'Platform Uptime', score: 99.9, color: '#10B981' },
-    { metric: 'Data Security', score: 98.5, color: '#3B82F6' },
-    { metric: 'Verification Speed', score: 97.8, color: '#F59E0B' },
-    { metric: 'User Satisfaction', score: 96.2, color: '#8B5CF6' }
-  ];
-
-  // Calculate customer metrics from API data with proper typing
-  const totalCustomerVerifications: number = customerHistory.reduce((sum: number, day: CustomerVerificationHistory) => sum + day.verifications, 0);
-  const totalAuthentic: number = customerHistory.reduce((sum: number, day: CustomerVerificationHistory) => sum + day.authentic, 0);
-  const totalCounterfeit: number = customerHistory.reduce((sum: number, day: CustomerVerificationHistory) => sum + day.counterfeit, 0);
+  // Calculate customer metrics from API data
+  const totalCustomerVerifications = customerHistory.reduce((sum, day) => sum + day.verifications, 0);
+  const totalAuthentic = customerHistory.reduce((sum, day) => sum + day.authentic, 0);
+  const totalCounterfeit = customerHistory.reduce((sum, day) => sum + day.counterfeit, 0);
   
-  const customerAuthenticRate: string = totalCustomerVerifications > 0 
+  const customerAuthenticRate = totalCustomerVerifications > 0 
     ? ((totalAuthentic / totalCustomerVerifications) * 100).toFixed(1)
     : '0';
     
-  const avgVerificationTime: string = totalCustomerVerifications > 0
-    ? (customerHistory.reduce((sum: number, day: CustomerVerificationHistory) => sum + (day.avgTime * day.verifications), 0) / totalCustomerVerifications).toFixed(2)
+  const avgVerificationTime = totalCustomerVerifications > 0
+    ? (customerHistory.reduce((sum, day) => sum + (day.avgTime * day.verifications), 0) / totalCustomerVerifications).toFixed(2)
     : '0';
 
-  const totalDevicesVerified: number = customerDevices.reduce((sum: number, device: CustomerDeviceBreakdown) => sum + device.count, 0);
+  const totalDevicesVerified = customerDevices.reduce((sum, device) => sum + device.count, 0);
+  // const platformTrustScore = '98.1'; 
 
-  // Calculate overall platform trust score
-  const platformTrustScore: string = (platformTrustMetrics.reduce((sum, metric) => sum + metric.score, 0) / platformTrustMetrics.length).toFixed(1);
-
-  // Handle loading state
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -111,7 +103,7 @@ const CustomerAnalyticsDashboard = () => {
         {/* Time Range Filter */}
         <div className="flex space-x-2 mb-6">
           <label className="text-sm font-medium text-gray-700 self-center">Time Range:</label>
-          {(['7d', '30d', '90d', '1y'] as const).map((range: string) => (
+          {(['7d', '30d', '90d', '1y'] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -129,7 +121,7 @@ const CustomerAnalyticsDashboard = () => {
         </div>
 
         {/* Customer Personal Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <MetricCard
             title="Total Verifications"
             value={totalCustomerVerifications.toString()}
@@ -154,17 +146,17 @@ const CustomerAnalyticsDashboard = () => {
             color="purple"
             formula="Weighted average response time"
           />
-          <MetricCard
+          {/* <MetricCard
             title="Trust Score"
             value={platformTrustScore}
             unit="/100"
             icon={Shield}
             color="orange"
             formula="Platform reliability metrics average"
-          />
+          /> */}
         </div>
 
-        {/* Customer Detailed Stats */}
+        {/* Customer Summary Stats */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h3 className="text-xl font-semibold mb-4">Your Verification Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,183 +180,28 @@ const CustomerAnalyticsDashboard = () => {
 
         {/* Customer Verification Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-xl font-semibold mb-4">Your Verification Activity</h3>
-            {customerHistory.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={customerHistory}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="authentic" stackId="1" fill="#10B981" name="Authentic" />
-                  <Bar dataKey="counterfeit" stackId="1" fill="#EF4444" name="Counterfeit" />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-64 text-gray-500">
-                No verification data available
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-xl font-semibold mb-4">Your Device Types Verified</h3>
-            {customerDevices.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={customerDevices}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="count"
-                    label={({ name, value }: { name: string; value: number }) => `${name}: ${value}`}
-                  >
-                    {customerDevices.map((entry: CustomerDeviceBreakdown, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-64 text-gray-500">
-                No device data available
-              </div>
-            )}
-          </div>
+          <VerificationHistoryChart data={customerHistory} />
+          <DeviceBreakdownChart data={customerDevices} />
         </div>
 
         {/* Platform Trust & Security */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Platform Security & Trust</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              {platformTrustMetrics.map((metric, index: number) => (
-                <div key={index} className="flex items-center justify-between">
-                  <span className="text-gray-700">{metric.metric}</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-32 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="h-2 rounded-full" 
-                        style={{ 
-                          width: `${metric.score}%`, 
-                          backgroundColor: metric.color 
-                        }}
-                      ></div>
-                    </div>
-                    <span className="text-sm font-medium w-12">{metric.score}%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col justify-center items-center">
-              <div className="text-4xl font-bold text-green-600">{platformTrustScore}%</div>
-              <p className="text-gray-600 text-center">Platform Trust Score</p>
-              <div className="flex items-center mt-2 text-green-600">
-                <Shield className="h-5 w-5 mr-1" />
-                <span className="text-sm">Blockchain Secured</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* <PlatformTrustSection trustScore={platformTrustScore} /> */}
 
-        {/* Verification Statistics */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Your Verification Statistics</h3>
-          {customerHistory.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={customerHistory}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis yAxisId="count" orientation="left" />
-                <YAxis yAxisId="time" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Bar yAxisId="count" dataKey="authentic" fill="#10B981" name="Authentic Products" />
-                <Bar yAxisId="count" dataKey="counterfeit" fill="#EF4444" name="Counterfeit Detected" />
-                <Line yAxisId="time" type="monotone" dataKey="avgTime" stroke="#3B82F6" strokeWidth={3} name="Avg Time (s)" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              No statistics available
-            </div>
-          )}
-        </div>
+        {/* Verification Logs */}
+        <VerificationLogsTable logs={verificationLogs} />
 
-        {/* Device Breakdown Details */}
-        {customerDevices.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <h3 className="text-xl font-semibold mb-4">Device Verification Breakdown</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customerDevices.map((device: CustomerDeviceBreakdown, index: number) => (
-                <div key={index} className="p-4 border rounded-lg" style={{ borderColor: device.color }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-800">{device.name}</h4>
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: device.color }}></div>
-                  </div>
-                  <div className="space-y-1 text-sm">
-                    <p className="text-gray-600">Total: <span className="font-medium">{device.count}</span></p>
-                    <p className="text-green-600">Authentic: <span className="font-medium">{device.authentic}</span></p>
-                    <p className="text-red-600">Counterfeit: <span className="font-medium">{device.counterfeit}</span></p>
-                    <p className="text-gray-500">
-                      Success Rate: <span className="font-medium">
-                        {device.count > 0 ? ((device.authentic / device.count) * 100).toFixed(1) : '0'}%
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Counterfeit Reports */}
+        <CounterfeitReportsTable reports={counterfeitReports} />
 
         {/* Customer Insights */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-xl font-semibold mb-4">Your Verification Insights</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-start space-x-3 p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-green-800">Great Track Record</p>
-                <p className="text-sm text-green-700">
-                  {customerAuthenticRate}% of your {totalCustomerVerifications} verified products are authentic
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
-              <Clock className="h-5 w-5 text-blue-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-blue-800">Fast Verification</p>
-                <p className="text-sm text-blue-700">
-                  Average verification time: {avgVerificationTime}s across {totalDevicesVerified} devices
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3 p-4 bg-purple-50 rounded-lg">
-              <Shield className="h-5 w-5 text-purple-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-purple-800">Secure Platform</p>
-                <p className="text-sm text-purple-700">
-                  Your data is protected by blockchain technology with {platformTrustScore}% trust score
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3 p-4 bg-orange-50 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-orange-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-orange-800">Security Awareness</p>
-                <p className="text-sm text-orange-700">
-                  You've detected {totalCounterfeit} counterfeit products, protecting yourself and others
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <CustomerInsights 
+          authenticRate={customerAuthenticRate}
+          totalVerifications={totalCustomerVerifications}
+          avgTime={avgVerificationTime}
+          totalDevices={totalDevicesVerified}
+          // trustScore={platformTrustScore}
+          totalCounterfeit={totalCounterfeit}
+        />
       </div>
     </div>
   );

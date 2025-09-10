@@ -1,8 +1,7 @@
-// pages/VerifyPage.tsx - Updated with analytics integration
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVerification } from '../hooks/useVerification';
-import { useAnalytics } from '../hooks/useAnalytics';
+import { useCustomerAnalytics } from '../hooks/useAnalytics';
 import type { VerificationResult, BatchVerificationResult, SampleData, OwnershipRecord } from '../../src/utils/VerificationService';
 import { copyToClipboard } from '../utils/helper';
 import { OwnershipHistoryModal } from '../components/manufacturerDashboard/ownershipTransferHistory';
@@ -29,7 +28,7 @@ const VerifyPage: React.FC = () => {
     clearError
   } = useVerification();
 
-  const { submitCounterfeitReport } = useAnalytics();
+  const { submitCounterfeitReport } = useCustomerAnalytics();
 
   const [showCounterfeitAlert, setShowCounterfeitAlert] = useState(false);
   const [activeTab, setActiveTab] = useState('verify');
@@ -59,7 +58,6 @@ const handleVerifyDevice = async () => {
     const result = await verifyProduct(serialNumber);
     setVerificationResult(result);
     
-    // SIMPLE: Show alert for any non-authentic product
     if (!result.authentic) {
       setShowCounterfeitAlert(true);
     } else {
@@ -143,7 +141,8 @@ const handleCounterfeitReportSubmit = async (reportData: any) => {
   try {
     const result = await submitCounterfeitReport({
       serialNumber: reportData.serialNumber,
-      productName: reportData.brand,
+      productName: reportData.productName, 
+      deviceCategory: reportData.deviceCategory, 
       customerConsent: reportData.customerConsent,
       locationData: reportData.locationData,
     });

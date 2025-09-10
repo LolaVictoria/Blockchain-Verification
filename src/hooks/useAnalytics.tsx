@@ -1,95 +1,62 @@
-// hooks/useAnalytics.ts
 import { useState, useCallback, useEffect } from 'react';
-import { analyticsService } from '../utils/AnalyticsService'; // Changed to named import
+import analyticsService  from '../utils/AnalyticsService';
 import type {
   VerificationTrend,
-  KPIs,
+  kpis,
   DeviceAnalytic,
   CustomerEngagement,
   CounterfeitLocation,
   CustomerVerificationHistory,
   CustomerDeviceBreakdown,
-  SecurityMetric,
-  ManufacturerOverview,
+  VerificationLog,
+  CounterfeitReport,
   CounterfeitReportData,
 } from '../utils/AnalyticsService';
 
-interface AnalyticsState {
-  // Common state
+interface ManufacturerAnalyticsState {
   loading: boolean;
   error: string | null;
+  lastUpdated: Date | null;
   
-  // Manufacturer analytics
-  verificationTrends: {
-    verificationTrends: VerificationTrend[];
-    kpis: KPIs;
-  } | null;
+  // Manufacturer data
+  kpis: kpis | null;
+  verificationTrends: VerificationTrend[];
   deviceAnalytics: DeviceAnalytic[];
   customerEngagement: CustomerEngagement[];
   counterfeitLocations: CounterfeitLocation[];
-  securityMetrics: SecurityMetric[];
-  overallSecurityScore: number;
-  manufacturerOverview: {
-    overview: ManufacturerOverview;
-    topProducts: Array<{
-      name: string;
-      brand: string;
-      model: string;
-      verifications: number;
-      authenticityRate: number;
-    }>;
-  } | null;
-  
-  // Customer analytics
-  customerHistory: CustomerVerificationHistory[];
-  customerDevices: CustomerDeviceBreakdown[];
-  recentVerifications: Array<{
-    serialNumber: string;
-    product: string;
-    status: string;
-    date: string;
-    time: string;
-    confidence: number;
-  }>;
-  
-  // Performance data
-  performanceAlerts: Array<{
-    type: string;
-    title: string;
-    message: string;
-    severity: string;
-  }>;
-  realTimeStatus: {
-    recentActivity: number;
-    totalProducts: number;
-    blockchainHealth: boolean;
-    uptimePercentage: number;
-    lastVerification: string | null;
-    systemStatus: 'healthy' | 'degraded' | 'critical';
-  } | null;
-  
-  // Additional states for better UX
-  refreshing: boolean;
-  lastUpdated: Date | null;
 }
 
-const initialState: AnalyticsState = {
+interface CustomerAnalyticsState {
+  loading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+  
+  // Customer data
+  customerHistory: CustomerVerificationHistory[];
+  customerDevices: CustomerDeviceBreakdown[];
+  verificationLogs: VerificationLog[];
+  counterfeitReports: CounterfeitReport[];
+}
+
+const initialManufacturerState: ManufacturerAnalyticsState = {
   loading: false,
   error: null,
-  verificationTrends: null,
+  lastUpdated: null,
+  kpis: null,
+  verificationTrends: [],
   deviceAnalytics: [],
   customerEngagement: [],
   counterfeitLocations: [],
-  securityMetrics: [],
-  overallSecurityScore: 0,
-  manufacturerOverview: null,
+};
+
+const initialCustomerState: CustomerAnalyticsState = {
+  loading: false,
+  error: null,
+  lastUpdated: null,
   customerHistory: [],
   customerDevices: [],
-  recentVerifications: [],
-  performanceAlerts: [],
-  realTimeStatus: null,
-  refreshing: false,
-  lastUpdated: null,
+  verificationLogs: [],
+  counterfeitReports: [],
 };
 
 // Generate colors for device breakdowns
@@ -105,130 +72,145 @@ const generateDeviceColors = (devices: any[]) => {
   }));
 };
 
-export const useAnalytics = (timeRange: string = '30d') => {
-  const [state, setState] = useState<AnalyticsState>(initialState);
+export const useManufacturerAnalytics = (timeRange: string = '30d') => {
+  const [state, setState] = useState<ManufacturerAnalyticsState>(initialManufacturerState);
 
   const setLoading = useCallback((loading: boolean) => {
     setState(prev => ({ ...prev, loading }));
-  }, []);
-
-  const setRefreshing = useCallback((refreshing: boolean) => {
-    setState(prev => ({ ...prev, refreshing }));
   }, []);
 
   const setError = useCallback((error: string | null) => {
     setState(prev => ({ ...prev, error }));
   }, []);
 
-  const updateLastUpdated = useCallback(() => {
-    setState(prev => ({ ...prev, lastUpdated: new Date() }));
-  }, []);
-
-  // Manufacturer Analytics Functions
-  const loadManufacturerAnalytics = useCallback(async (deviceType?: string) => {
+  const loadManufacturerAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const [
-        verificationData,
-        deviceData,
-        customerData,
-        counterfeitData,
-        securityData,
         overviewData,
-        alertsData,
-        realTimeData,
+        trendsData,
+        deviceData,
+        engagementData,
+        counterfeitData,
       ] = await Promise.allSettled([
-        analyticsService.getVerificationAnalytics(timeRange, deviceType),
-        analyticsService.getDeviceAnalytics(timeRange),
+        analyticsService.getManufacturerOverview(),
+        analyticsService.getVerificationTrends(timeRange),
+        analyticsService.getManufacturerDeviceAnalytics(timeRange),
         analyticsService.getCustomerEngagement(timeRange),
         analyticsService.getCounterfeitLocations(timeRange),
-        analyticsService.getSecurityMetrics(),
-        analyticsService.getManufacturerOverview(),
-        analyticsService.getPerformanceAlerts(),
-        analyticsService.getRealTimeStatus(),
       ]);
 
       setState(prev => ({
         ...prev,
-        verificationTrends: verificationData.status === 'fulfilled' ? verificationData.value : null,
+        kpis: overviewData.status === 'fulfilled' ? overviewData.value.kpis : null,
+        verificationTrends: trendsData.status === 'fulfilled' ? trendsData.value.verificationTrends : [],
         deviceAnalytics: deviceData.status === 'fulfilled' ? 
           generateDeviceColors(deviceData.value.deviceVerifications) : [],
-        customerEngagement: customerData.status === 'fulfilled' ? customerData.value.customerEngagement : [],
+        customerEngagement: engagementData.status === 'fulfilled' ? engagementData.value.customerEngagement : [],
         counterfeitLocations: counterfeitData.status === 'fulfilled' ? counterfeitData.value.counterfeitLocations : [],
-        securityMetrics: securityData.status === 'fulfilled' ? securityData.value.securityMetrics : [],
-        overallSecurityScore: securityData.status === 'fulfilled' ? securityData.value.overallSecurityScore : 0,
-        manufacturerOverview: overviewData.status === 'fulfilled' ? overviewData.value : null,
-        performanceAlerts: alertsData.status === 'fulfilled' ? alertsData.value.alerts : [],
-        realTimeStatus: realTimeData.status === 'fulfilled' ? realTimeData.value.realTimeStatus : null,
+        lastUpdated: new Date(),
       }));
 
       // Log any failures for debugging
       const failures = [
-        verificationData, deviceData, customerData, counterfeitData,
-        securityData, overviewData, alertsData, realTimeData
+        overviewData, trendsData, deviceData, engagementData, counterfeitData
       ].filter(result => result.status === 'rejected');
       
       if (failures.length > 0) {
-        console.warn('Some analytics requests failed:', failures.map(f => f.status === 'rejected' ? f.reason : null));
+        console.warn('Some manufacturer analytics requests failed:', 
+          failures.map(f => f.status === 'rejected' ? f.reason : null));
       }
 
-      updateLastUpdated();
     } catch (error) {
       console.error('Error loading manufacturer analytics:', error);
       setError(error instanceof Error ? error.message : 'Failed to load analytics');
     } finally {
       setLoading(false);
     }
-  }, [timeRange, setLoading, setError, updateLastUpdated]);
+  }, [timeRange, setLoading, setError]);
 
-  // Customer Analytics Functions
-  const loadCustomerAnalytics = useCallback(async () => {
+  // Load data when component mounts or timeRange changes
+  useEffect(() => {
+    loadManufacturerAnalytics();
+  }, [loadManufacturerAnalytics]);
+
+  return {
+    // State
+    loading: state.loading,
+    error: state.error,
+    lastUpdated: state.lastUpdated,
+    
+    // Data
+    kpis: state.kpis,
+    verificationTrends: state.verificationTrends,
+    deviceAnalytics: state.deviceAnalytics,
+    customerEngagement: state.customerEngagement,
+    counterfeitLocations: state.counterfeitLocations,
+    
+    // Actions
+    loadManufacturerAnalytics,
+    setError,
+    clearError: () => setError(null),
+  };
+};
+
+export const useCustomerAnalytics = (timeRange: string = '30d') => {
+  const [state, setState] = useState<CustomerAnalyticsState>(initialCustomerState);
+
+  const setLoading = useCallback((loading: boolean) => {
+    setState(prev => ({ ...prev, loading }));
+  }, []);
+
+  const setError = useCallback((error: string | null) => {
+    setState(prev => ({ ...prev, error }));
+  }, []);
+
+  const loadCustomerAnalytics = useCallback(async (logsLimit: number = 20) => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await analyticsService.getCustomerPersonalAnalytics(timeRange);
-      
+      const [
+        overviewData,
+        deviceData,
+        logsData,
+        reportsData,
+      ] = await Promise.allSettled([
+        analyticsService.getCustomerOverview(timeRange),
+        analyticsService.getCustomerDeviceBreakdown(timeRange),
+        analyticsService.getCustomerVerificationLogs(logsLimit),
+        analyticsService.getCustomerCounterfeitReports(timeRange),
+      ]);
+
       setState(prev => ({
         ...prev,
-        customerHistory: data.customerHistory,
-        customerDevices: generateDeviceColors(data.deviceBreakdown),
-        recentVerifications: data.recentVerifications,
+        customerHistory: overviewData.status === 'fulfilled' ? overviewData.value.customerHistory : [],
+        customerDevices: deviceData.status === 'fulfilled' ? 
+          generateDeviceColors(deviceData.value.deviceBreakdown) : [],
+        verificationLogs: logsData.status === 'fulfilled' ? logsData.value.verificationLogs : [],
+        counterfeitReports: reportsData.status === 'fulfilled' ? reportsData.value.counterfeitReports : [],
+        lastUpdated: new Date(),
       }));
 
-      updateLastUpdated();
+      // Log any failures for debugging
+      const failures = [overviewData, deviceData, logsData, reportsData]
+        .filter(result => result.status === 'rejected');
+      
+      if (failures.length > 0) {
+        console.warn('Some customer analytics requests failed:', 
+          failures.map(f => f.status === 'rejected' ? f.reason : null));
+      }
+
     } catch (error) {
       console.error('Error loading customer analytics:', error);
       setError(error instanceof Error ? error.message : 'Failed to load customer analytics');
     } finally {
       setLoading(false);
     }
-  }, [timeRange, setLoading, setError, updateLastUpdated]);
+  }, [timeRange, setLoading, setError]);
 
-  // Refresh current data without full loading state
-  const refreshData = useCallback(async (userRole: 'manufacturer' | 'customer' | null) => {
-    if (state.loading) return; // Prevent multiple simultaneous refreshes
-    
-    setRefreshing(true);
-    setError(null);
-
-    try {
-      if (userRole === 'manufacturer') {
-        await loadManufacturerAnalytics();
-      } else if (userRole === 'customer') {
-        await loadCustomerAnalytics();
-      }
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh data');
-    } finally {
-      setRefreshing(false);
-    }
-  }, [state.loading, loadManufacturerAnalytics, loadCustomerAnalytics, setRefreshing, setError]);
-
-  // Counterfeit Reporting
   const submitCounterfeitReport = useCallback(async (reportData: CounterfeitReportData) => {
     setLoading(true);
     setError(null);
@@ -236,16 +218,17 @@ export const useAnalytics = (timeRange: string = '30d') => {
     try {
       const result = await analyticsService.submitCounterfeitReport(reportData);
       
-      // Optionally reload analytics data after submitting report
+      // Reload counterfeit reports after successful submission
       if (result.success) {
         try {
-          const counterfeitData = await analyticsService.getCounterfeitLocations(timeRange);
+          const reportsData = await analyticsService.getCustomerCounterfeitReports(timeRange);
           setState(prev => ({
             ...prev,
-            counterfeitLocations: counterfeitData.counterfeitLocations,
+            counterfeitReports: reportsData.counterfeitReports,
+            lastUpdated: new Date(),
           }));
         } catch (reloadError) {
-          console.warn('Failed to reload counterfeit data after report:', reloadError);
+          console.warn('Failed to reload counterfeit reports:', reloadError);
         }
       }
 
@@ -260,233 +243,49 @@ export const useAnalytics = (timeRange: string = '30d') => {
     }
   }, [timeRange, setLoading, setError]);
 
-  // Record verification attempt (for analytics tracking)
+  // Load data when component mounts or timeRange changes
+  useEffect(() => {
+    loadCustomerAnalytics();
+  }, [loadCustomerAnalytics]);
+
+  return {
+    // State
+    loading: state.loading,
+    error: state.error,
+    lastUpdated: state.lastUpdated,
+    
+    // Data
+    customerHistory: state.customerHistory,
+    customerDevices: state.customerDevices,
+    verificationLogs: state.verificationLogs,
+    counterfeitReports: state.counterfeitReports,
+    
+    // Actions
+    loadCustomerAnalytics,
+    submitCounterfeitReport,
+    setError,
+    clearError: () => setError(null),
+  };
+};
+
+// Shared analytics utilities
+export const useVerificationRecording = () => {
   const recordVerification = useCallback(async (verificationData: {
     serialNumber: string;
-    productId?: string;
     customerId?: string;
     isAuthentic: boolean;
     responseTime: number;
     source: 'blockchain' | 'database';
     confidenceScore?: number;
-    verificationMethod?: 'qr_code' | 'nfc' | 'manual' | 'batch';
+    verificationMethod: string;
   }) => {
     try {
-      // Get additional device info
-      const deviceInfo = {
-        userAgent: navigator.userAgent,
-        timestamp: Date.now(),
-      };
-
-      // Try to get location if available (with user permission)
-      let location = undefined;
-      if ('geolocation' in navigator) {
-        try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { 
-              timeout: 5000,
-              enableHighAccuracy: false 
-            });
-          });
-          
-          location = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-        } catch (geoError) {
-          // Geolocation failed or was denied - continue without it
-          console.log('Geolocation not available:', geoError);
-        }
-      }
-
-      await analyticsService.recordVerificationAttempt({
-        ...verificationData,
-        deviceInfo: {
-          ...deviceInfo,
-          location,
-        },
-      });
-
+      await analyticsService.recordVerificationAttempt(verificationData);
     } catch (error) {
       console.warn('Failed to record verification for analytics:', error);
       // Don't throw error here - this is just for analytics tracking
     }
   }, []);
 
-  // Export functionality
-  const exportData = useCallback(async (
-    exportType: 'verifications' | 'customers' | 'reports',
-    format: 'json' | 'csv' = 'json'
-  ) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await analyticsService.exportAnalyticsData(exportType, format, timeRange);
-      
-      // Create and trigger download
-      let dataToDownload: string;
-      let mimeType: string;
-      
-      if (format === 'json') {
-        dataToDownload = JSON.stringify(result.data, null, 2);
-        mimeType = 'application/json';
-      } else {
-        // Handle CSV format - convert array to CSV string if needed
-        if (Array.isArray(result.data)) {
-          // Convert array of objects to CSV string
-          if (result.data.length > 0) {
-            const headers = Object.keys(result.data[0]).join(',');
-            const rows = result.data.map(row => 
-              Object.values(row).map(value => 
-                typeof value === 'string' && value.includes(',') ? `"${value}"` : value
-              ).join(',')
-            );
-            dataToDownload = [headers, ...rows].join('\n');
-          } else {
-            dataToDownload = '';
-          }
-        } else if (typeof result.data === 'string') {
-          // Data is already a CSV string
-          dataToDownload = result.data;
-        } else {
-          // Fallback: convert to JSON and then to CSV-like format
-          dataToDownload = JSON.stringify(result.data, null, 2);
-        }
-        mimeType = 'text/csv';
-      }
-      
-      const blob = new Blob([dataToDownload], { type: mimeType });
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${exportType}_${timeRange}_${new Date().toISOString().split('T')[0]}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      return result;
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to export data';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [timeRange, setLoading, setError]);
-
-  // Get comparison analytics
-  const getComparisonAnalytics = useCallback(async () => {
-    try {
-      return await analyticsService.getComparisonAnalytics(timeRange);
-    } catch (error) {
-      console.error('Error getting comparison analytics:', error);
-      throw error;
-    }
-  }, [timeRange]);
-
-  // Get analytics trends
-  const getAnalyticsTrends = useCallback(async () => {
-    try {
-      return await analyticsService.getAnalyticsTrends(timeRange);
-    } catch (error) {
-      console.error('Error getting analytics trends:', error);
-      throw error;
-    }
-  }, [timeRange]);
-
-  // Health check
-  const checkSystemHealth = useCallback(async () => {
-    try {
-      return await analyticsService.checkHealth();
-    } catch (error) {
-      console.error('System health check failed:', error);
-      throw error;
-    }
-  }, []);
-
-  // Auto-refresh functionality for real-time data
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    // Auto-refresh real-time status every 30 seconds
-    const startAutoRefresh = () => {
-      interval = setInterval(async () => {
-        if (state.loading || state.refreshing) return; // Skip if already loading
-        
-        try {
-          const realTimeData = await analyticsService.getRealTimeStatus();
-          setState(prev => ({
-            ...prev,
-            realTimeStatus: realTimeData.realTimeStatus,
-            lastUpdated: new Date(),
-          }));
-        } catch (error) {
-          console.warn('Auto-refresh failed:', error);
-        }
-      }, 30000);
-    };
-
-    // Start auto-refresh if we have real-time data
-    if (state.realTimeStatus) {
-      startAutoRefresh();
-    }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [state.realTimeStatus, state.loading, state.refreshing]);
-
-  // Clear data when component unmounts or timeRange changes
-  useEffect(() => {
-    return () => {
-      setState(initialState);
-    };
-  }, [timeRange]);
-
-  return {
-    // State
-    loading: state.loading,
-    refreshing: state.refreshing,
-    error: state.error,
-    lastUpdated: state.lastUpdated,
-    
-    // Manufacturer data
-    verificationTrends: state.verificationTrends,
-    deviceAnalytics: state.deviceAnalytics,
-    customerEngagement: state.customerEngagement,
-    counterfeitLocations: state.counterfeitLocations,
-    securityMetrics: state.securityMetrics,
-    overallSecurityScore: state.overallSecurityScore,
-    manufacturerOverview: state.manufacturerOverview,
-    performanceAlerts: state.performanceAlerts,
-    realTimeStatus: state.realTimeStatus,
-    
-    // Customer data
-    customerHistory: state.customerHistory,
-    customerDevices: state.customerDevices,
-    recentVerifications: state.recentVerifications,
-    
-    // Actions
-    loadManufacturerAnalytics,
-    loadCustomerAnalytics,
-    refreshData,
-    submitCounterfeitReport,
-    recordVerification,
-    exportData,
-    getComparisonAnalytics,
-    getAnalyticsTrends,
-    checkSystemHealth,
-    setError,
-    setLoading,
-    
-    // Utility methods
-    clearError: () => setError(null),
-    clearData: () => setState(initialState),
-  };
+  return { recordVerification };
 };
