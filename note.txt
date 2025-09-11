@@ -1,25 +1,174 @@
-1.  showalert
-2. redundancy for - getOwnershipHistory function
+import React from 'react';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-GET /api/analytics/verifications?timeRange=${timeRange}
-GET /api/analytics/devices
-GET /api/analytics/customers
-GET /api/analytics/counterfeit-locations
-POST /api/counterfeit-reports
+// Sample data structure
+const customerDeviceData = [
+  { name: 'Smartphone', authentic: 8, counterfeit: 2, total: 10 },
+  { name: 'Laptop', authentic: 5, counterfeit: 1, total: 6 },
+  { name: 'Tablet', authentic: 3, counterfeit: 0, total: 3 },
+  { name: 'Smartwatch', authentic: 2, counterfeit: 1, total: 3 }
+];
 
+const manufacturerDeviceData = [
+  { name: 'Smartphone', authentic: 1250, counterfeit: 180, total: 1430 },
+  { name: 'Laptop', authentic: 890, counterfeit: 45, total: 935 },
+  { name: 'Tablet', authentic: 650, counterfeit: 25, total: 675 },
+  { name: 'Smartwatch', authentic: 420, counterfeit: 38, total: 458 },
+  { name: 'Headphones', authentic: 380, counterfeit: 52, total: 432 }
+];
 
-3. Backend Database Schema Changes:
-Add these fields to your verifications collection documents:
-{
-    # ... existing fields ...
-    'device_name': str,        # e.g., "iPhone 15 Pro"
-    'device_category': str,    # e.g., "Smartphone"
-    'brand': str,             # e.g., "Apple"
-    'customer_id': ObjectId   # Link to customer
-}
-Add these fields to your counterfeit_reports collection:
-{
-    # ... existing fields ...
-    'customer_id': ObjectId,      # Link to customer  
-    'verification_id': ObjectId  # Link back to verification
-}
+const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6'];
+
+const DeviceBreakdownCharts = () => {
+  // For pie chart - showing device distribution
+  const pieData = customerDeviceData.map((item, index) => ({
+    name: item.name,
+    value: item.total,
+    color: COLORS[index % COLORS.length]
+  }));
+
+  // Custom tooltip for detailed breakdown
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-3 border rounded shadow-lg">
+          <p className="font-semibold">{data.name}</p>
+          <p className="text-green-600">Authentic: {data.authentic}</p>
+          <p className="text-red-600">Counterfeit: {data.counterfeit}</p>
+          <p className="font-medium">Total: {data.total}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="space-y-8 p-6">
+      <h2 className="text-2xl font-bold text-center mb-8">Device Breakdown Visualization Options</h2>
+      
+      {/* Customer Dashboard - Compact View */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Customer Dashboard - Your Device Types</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          
+          {/* Option 1: Pie Chart for Overview */}
+          <div>
+            <h4 className="text-md font-medium mb-2">Device Distribution (Pie Chart)</h4>
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Option 2: Stacked Bar for Authentic vs Counterfeit */}
+          <div>
+            <h4 className="text-md font-medium mb-2">Authentic vs Counterfeit (Stacked Bar)</h4>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={customerDeviceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="name" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="authentic" stackId="a" fill="#10B981" name="Authentic" />
+                <Bar dataKey="counterfeit" stackId="a" fill="#EF4444" name="Counterfeit" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* Manufacturer Dashboard - Comprehensive View */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-semibold mb-4">Manufacturer Dashboard - All Customer Devices</h3>
+        
+        {/* Horizontal Bar Chart for Better Readability with Larger Data */}
+        <div className="mb-6">
+          <h4 className="text-md font-medium mb-2">Device Verification Summary (Horizontal Bars)</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              layout="horizontal"
+              data={manufacturerDeviceData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={80} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Bar dataKey="authentic" fill="#10B981" name="Authentic" />
+              <Bar dataKey="counterfeit" fill="#EF4444" name="Counterfeit" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {manufacturerDeviceData.map((device, index) => (
+            <div key={device.name} className="bg-gray-50 p-3 rounded">
+              <h5 className="font-medium text-sm">{device.name}</h5>
+              <p className="text-xs text-gray-600">Total: {device.total}</p>
+              <div className="flex justify-between text-xs mt-1">
+                <span className="text-green-600">{device.authentic}</span>
+                <span className="text-red-600">{device.counterfeit}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div
+                  className="bg-green-500 h-2 rounded-full"
+                  style={{ width: `${(device.authentic / device.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recommendations */}
+      <div className="bg-blue-50 p-6 rounded-lg">
+        <h3 className="text-lg font-semibold mb-4">Chart Type Recommendations</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-medium text-blue-800">Customer Dashboard</h4>
+            <ul className="text-sm text-blue-700 space-y-1 mt-2">
+              <li>• <strong>Pie Chart:</strong> Quick overview of device distribution</li>
+              <li>• <strong>Stacked Bars:</strong> Clear authentic vs counterfeit comparison</li>
+              <li>• <strong>Compact Design:</strong> Less overwhelming for individual users</li>
+              <li>• <strong>Focus:</strong> Personal verification history</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-800">Manufacturer Dashboard</h4>
+            <ul className="text-sm text-blue-700 space-y-1 mt-2">
+              <li>• <strong>Horizontal Bars:</strong> Better for many device types</li>
+              <li>• <strong>Summary Cards:</strong> Quick metrics at a glance</li>
+              <li>• <strong>Detailed Tooltips:</strong> Rich data on hover</li>
+              <li>• <strong>Focus:</strong> Market-wide trends and patterns</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DeviceBreakdownCharts;

@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Package, AlertTriangle } from 'lucide-react';
-import MetricCard from "./metricCard";
 import { useCustomerAnalytics } from '../../hooks/useAnalytics';
 import {VerificationHistoryChart} from './customer/verificationHistoryChart';
-import { DeviceBreakdownChart } from './customer/deviceBreakdownChart';
+import { CustomerDeviceBreakdownComponent } from './customer/customerDeviceBreakdownChart';
 // import { PlatformTrustSection } from './customer/platformTrustSection';
 import { VerificationLogsTable } from './customer/verificationLogsTable';
 import { CounterfeitReportsTable } from './customer/counterfeitReportsTable';
 import { CustomerInsights } from './customer/customerInsights';
+import { AlertTriangle } from 'lucide-react';
 
 const CustomerAnalyticsDashboard = () => {
   const [timeRange, setTimeRange] = useState<string>('30d');
@@ -120,69 +119,13 @@ const CustomerAnalyticsDashboard = () => {
           ))}
         </div>
 
-        {/* Customer Personal Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <MetricCard
-            title="Total Verifications"
-            value={totalCustomerVerifications.toString()}
-            unit=""
-            icon={Package}
-            color="blue"
-            formula="Sum of all verification requests"
-          />
-          <MetricCard
-            title="Authentic Rate"
-            value={customerAuthenticRate}
-            unit="%"
-            icon={CheckCircle}
-            color="green"
-            formula="(Authentic Products) / (Total Verifications) × 100%"
-          />
-          <MetricCard
-            title="Avg Verification Time"
-            value={avgVerificationTime}
-            unit="s"
-            icon={Clock}
-            color="purple"
-            formula="Weighted average response time"
-          />
-          {/* <MetricCard
-            title="Trust Score"
-            value={platformTrustScore}
-            unit="/100"
-            icon={Shield}
-            color="orange"
-            formula="Platform reliability metrics average"
-          /> */}
-        </div>
-
-        {/* Customer Summary Stats */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <h3 className="text-xl font-semibold mb-4">Your Verification Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-700">Total Devices</h4>
-              <p className="text-3xl font-bold text-blue-600">{totalDevicesVerified}</p>
-              <p className="text-sm text-blue-500">Devices Verified</p>
-            </div>
-            <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-700">Authentic Found</h4>
-              <p className="text-3xl font-bold text-green-600">{totalAuthentic}</p>
-              <p className="text-sm text-green-500">Genuine Products</p>
-            </div>
-            <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
-              <h4 className="font-medium text-red-700">Counterfeits Detected</h4>
-              <p className="text-3xl font-bold text-red-600">{totalCounterfeit}</p>
-              <p className="text-sm text-red-500">Fake Products Caught</p>
-            </div>
-          </div>
-        </div>
+       
+        
 
         {/* Customer Verification Activity */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <VerificationHistoryChart data={customerHistory} />
-          <DeviceBreakdownChart data={customerDevices} />
-        </div>
+        <div className="grid grid-cols-1 gap-y-6 mb-8">
+          <CustomerDeviceBreakdownComponent data={customerDevices} />
+        
 
         {/* Platform Trust & Security */}
         {/* <PlatformTrustSection trustScore={platformTrustScore} /> */}
@@ -192,6 +135,7 @@ const CustomerAnalyticsDashboard = () => {
 
         {/* Counterfeit Reports */}
         <CounterfeitReportsTable reports={counterfeitReports} />
+        <VerificationHistoryChart data={customerHistory} />
 
         {/* Customer Insights */}
         <CustomerInsights 
@@ -202,6 +146,7 @@ const CustomerAnalyticsDashboard = () => {
           // trustScore={platformTrustScore}
           totalCounterfeit={totalCounterfeit}
         />
+        </div>
       </div>
     </div>
   );

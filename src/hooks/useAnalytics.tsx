@@ -11,6 +11,7 @@ import type {
   VerificationLog,
   CounterfeitReport,
   CounterfeitReportData,
+  ManufacturerDeviceAnalytic
 } from '../utils/AnalyticsService';
 
 interface ManufacturerAnalyticsState {
@@ -21,9 +22,10 @@ interface ManufacturerAnalyticsState {
   // Manufacturer data
   kpis: kpis | null;
   verificationTrends: VerificationTrend[];
-  deviceAnalytics: DeviceAnalytic[];
+  deviceAnalytics: DeviceAnalytic[]; 
   customerEngagement: CustomerEngagement[];
   counterfeitLocations: CounterfeitLocation[];
+  manufacturerDeviceAnalytics: ManufacturerDeviceAnalytic[]; 
 }
 
 interface CustomerAnalyticsState {
@@ -47,6 +49,7 @@ const initialManufacturerState: ManufacturerAnalyticsState = {
   deviceAnalytics: [],
   customerEngagement: [],
   counterfeitLocations: [],
+  manufacturerDeviceAnalytics:[]
 };
 
 const initialCustomerState: CustomerAnalyticsState = {
@@ -84,54 +87,56 @@ export const useManufacturerAnalytics = (timeRange: string = '30d') => {
   }, []);
 
   const loadManufacturerAnalytics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  setLoading(true);
+  setError(null);
 
-    try {
-      const [
-        overviewData,
-        trendsData,
-        deviceData,
-        engagementData,
-        counterfeitData,
-      ] = await Promise.allSettled([
-        analyticsService.getManufacturerOverview(),
-        analyticsService.getVerificationTrends(timeRange),
-        analyticsService.getManufacturerDeviceAnalytics(timeRange),
-        analyticsService.getCustomerEngagement(timeRange),
-        analyticsService.getCounterfeitLocations(timeRange),
-      ]);
+  try {
+    const [
+      overviewData,
+      trendsData,
+      manufacturerDeviceData, 
+      engagementData,
+      counterfeitData,
+    ] = await Promise.allSettled([
+      analyticsService.getManufacturerOverview(),
+      analyticsService.getVerificationTrends(timeRange),
+      analyticsService.getManufacturerDeviceAnalytics(timeRange), // New one
+      analyticsService.getCustomerEngagement(timeRange),
+      analyticsService.getCounterfeitLocations(timeRange),
+    ]);
 
-      setState(prev => ({
-        ...prev,
-        kpis: overviewData.status === 'fulfilled' ? overviewData.value.kpis : null,
-        verificationTrends: trendsData.status === 'fulfilled' ? trendsData.value.verificationTrends : [],
-        deviceAnalytics: deviceData.status === 'fulfilled' ? 
-          generateDeviceColors(deviceData.value.deviceVerifications) : [],
-        customerEngagement: engagementData.status === 'fulfilled' ? engagementData.value.customerEngagement : [],
-        counterfeitLocations: counterfeitData.status === 'fulfilled' ? counterfeitData.value.counterfeitLocations : [],
-        lastUpdated: new Date(),
-      }));
+    setState(prev => ({
+      ...prev,
+      kpis: overviewData.status === 'fulfilled' ? overviewData.value.kpis : null,
+      verificationTrends: trendsData.status === 'fulfilled' ? trendsData.value.verificationTrends : [],
+      // deviceAnalytics: deviceData.status === 'fulfilled' ? 
+      //   generateDeviceColors(deviceData.value.deviceVerifications || []) : [],
+      manufacturerDeviceAnalytics: manufacturerDeviceData.status === 'fulfilled' ? 
+        generateDeviceColors(manufacturerDeviceData.value.deviceVerifications || []) : [],
+      customerEngagement: engagementData.status === 'fulfilled' ? engagementData.value.customerEngagement : [],
+      counterfeitLocations: counterfeitData.status === 'fulfilled' ? counterfeitData.value.counterfeitLocations : [],
+      lastUpdated: new Date(),
+    }));
 
-      // Log any failures for debugging
-      const failures = [
-        overviewData, trendsData, deviceData, engagementData, counterfeitData
-      ].filter(result => result.status === 'rejected');
-      
-      if (failures.length > 0) {
-        console.warn('Some manufacturer analytics requests failed:', 
-          failures.map(f => f.status === 'rejected' ? f.reason : null));
-      }
-
-    } catch (error) {
-      console.error('Error loading manufacturer analytics:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load analytics');
-    } finally {
-      setLoading(false);
+    // Log any failures for debugging
+    const failures = [
+      overviewData, trendsData, manufacturerDeviceData, engagementData, counterfeitData
+    ].filter(result => result.status === 'rejected');
+    
+    if (failures.length > 0) {
+      console.warn('Some manufacturer analytics requests failed:', 
+        failures.map(f => f.status === 'rejected' ? f.reason : null));
     }
-  }, [timeRange, setLoading, setError]);
 
-  // Load data when component mounts or timeRange changes
+  } catch (error) {
+    console.error('Error loading manufacturer analytics:', error);
+    setError(error instanceof Error ? error.message : 'Failed to load analytics');
+  } finally {
+    setLoading(false);
+  }
+}, [timeRange, setLoading, setError]);
+
+  
   useEffect(() => {
     loadManufacturerAnalytics();
   }, [loadManufacturerAnalytics]);
@@ -145,7 +150,8 @@ export const useManufacturerAnalytics = (timeRange: string = '30d') => {
     // Data
     kpis: state.kpis,
     verificationTrends: state.verificationTrends,
-    deviceAnalytics: state.deviceAnalytics,
+    deviceAnalytics: state.deviceAnalytics, 
+    manufacturerDeviceAnalytics: state.manufacturerDeviceAnalytics, 
     customerEngagement: state.customerEngagement,
     counterfeitLocations: state.counterfeitLocations,
     

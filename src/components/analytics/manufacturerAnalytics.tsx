@@ -10,6 +10,7 @@ import type {
   CustomerEngagement, 
   CounterfeitLocation 
 } from '../../utils/AnalyticsService';
+import { ManufacturerDeviceAnalyticsComponent } from './manufacturer/manufacturerDeviceBreakdownChart';
 
 // Time Range Filter Component
 const TimeRangeFilter = ({ 
@@ -388,6 +389,7 @@ const ManufacturerAnalyticsDashboard = () => {
     customerEngagement,
     counterfeitLocations,
     loadManufacturerAnalytics,
+    manufacturerDeviceAnalytics,
     setError
   } = useManufacturerAnalytics(timeRange);
 
@@ -541,13 +543,21 @@ const ManufacturerAnalyticsDashboard = () => {
           )}
         </div>
 
-        {/* Key Insights & Action Items */}
+        
+    <ManufacturerDeviceAnalyticsComponent 
+      data={manufacturerDeviceAnalytics}
+      loading={loading}
+      error={error}
+    />
+
+    {/* Key Insights & Action Items */}
         {kpis && (
           <InsightsSection 
             kpis={kpis} 
             counterfeitLocations={counterfeitLocations} 
           />
         )}
+
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import apiClient from './apiClient';
 import { getCurrentUser } from '../../config';
 
-// Core Analytics Interfaces
+
 export interface VerificationTrend {
   date: string;
   totalAttempts: number;
@@ -18,6 +18,38 @@ export interface kpis {
   counterfeitRate: number;
   avgResponseTime: number;
   transactionEfficiency: number;
+}
+
+export interface CustomerDeviceBreakdown {
+  name: string;
+  count: number;
+  authentic: number;
+  counterfeit: number;
+  color?: string;
+  deviceNames?: string[]; 
+  total: number;
+  COLORS: string[]
+}
+
+export interface ManufacturerDeviceAnalytic {
+  name: string;
+  verifications: number;
+  authentic: number;
+  counterfeit: number;
+  color?: string;
+  customerCount: number;
+  authenticityRate: number;
+  avgConfidence: number;
+  recentVerifications: number;
+}
+
+export interface DetailedDeviceBreakdown {
+  deviceName: string;
+  deviceCategory: string;
+  verifications: number;
+  authentic: number;
+  counterfeit: number;
+  customerCount: number;
 }
 
 export interface DeviceAnalytic {
@@ -86,8 +118,6 @@ export interface CounterfeitReport {
   customerId: string;  
   verificationId?: string; 
 }
-
-
 
 export interface CounterfeitReportData {
   serialNumber: string;
@@ -169,26 +199,6 @@ class AnalyticsService {
     }
   }
 
-  async getManufacturerDeviceAnalytics(timeRange: string): Promise<{
-    deviceVerifications: DeviceAnalytic[];
-  }> {
-    try {
-      const params = new URLSearchParams({
-        timeRange,
-        manufacturerId: this.getManufacturerId(),
-      });
-
-      const response = await apiClient.get<{
-        deviceVerifications: DeviceAnalytic[];
-      }>(`/analytics/manufacturer/device-analytics?${params}`);
-
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get manufacturer device analytics:', error);
-      throw this.handleError(error);
-    }
-  }
-
   async getCustomerEngagement(timeRange: string): Promise<{
     customerEngagement: CustomerEngagement[];
   }> {
@@ -228,7 +238,53 @@ class AnalyticsService {
       throw this.handleError(error);
     }
   }
+  
+   async getManufacturerDeviceAnalytics(timeRange: string): Promise<{
+    deviceVerifications: DeviceAnalytic[];
+  }> {
+    try {
+      const params = new URLSearchParams({
+        timeRange,
+        manufacturerId: this.getManufacturerId(),
+      });
 
+      const response = await apiClient.get<{
+        deviceVerifications: DeviceAnalytic[];
+      }>(`/analytics/manufacturer/device-analytics?${params}`);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get manufacturer device analytics:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  async getManufacturerDetailedDeviceBreakdown(
+    timeRange: string, 
+    deviceCategory?: string
+  ): Promise<{
+    detailedBreakdown: DetailedDeviceBreakdown[];
+  }> {
+    try {
+      const params = new URLSearchParams({
+        timeRange,
+        manufacturerId: this.getManufacturerId(),
+      });
+      
+      if (deviceCategory) {
+        params.append('deviceCategory', deviceCategory);
+      }
+
+      const response = await apiClient.get<{
+        detailedBreakdown: DetailedDeviceBreakdown[];
+      }>(`/analytics/manufacturer/detailed-device-breakdown?${params}`);
+
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get detailed device breakdown:', error);
+      throw this.handleError(error);
+    }
+  }
   // CUSTOMER ANALYTICS
 
   async getCustomerOverview(timeRange: string): Promise<{
@@ -250,22 +306,22 @@ class AnalyticsService {
   }
 
   async getCustomerDeviceBreakdown(timeRange: string): Promise<{
-    deviceBreakdown: CustomerDeviceBreakdown[];
-  }> {
-    try {
-      const customerId = this.getCustomerId();
-      const params = new URLSearchParams({ timeRange });
+  deviceBreakdown: CustomerDeviceBreakdown[];
+}> {
+  try {
+    const customerId = this.getCustomerId();
+    const params = new URLSearchParams({ timeRange });
 
-      const response = await apiClient.get<{
-        deviceBreakdown: CustomerDeviceBreakdown[];
-      }>(`/analytics/customer/${customerId}/device-breakdown?${params}`);
+    const response = await apiClient.get<{
+      deviceBreakdown: CustomerDeviceBreakdown[];
+    }>(`/analytics/customer/${customerId}/device-breakdown?${params}`);
 
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get customer device breakdown:', error);
-      throw this.handleError(error);
-    }
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get customer device breakdown:', error);
+    throw this.handleError(error);
   }
+}
 
   async getCustomerVerificationLogs(limit: number = 20): Promise<{
     verificationLogs: VerificationLog[];
@@ -303,8 +359,7 @@ class AnalyticsService {
     }
   }
 
-  // SHARED UTILITIES
-
+  
   async submitCounterfeitReport(reportData: CounterfeitReportData): Promise<{
     success: boolean;
     message: string;
@@ -314,11 +369,34 @@ class AnalyticsService {
       const customerId = this.getCustomerId();
       const params = new URLSearchParams({ customerId });
 
+      // Enhanced payload that includes device information
+      const enhancedReportData = {
+        serialNumber: reportData.serialNumber,
+        productName: reportData.productName || 'Unknown Product',
+        deviceCategory: reportData.deviceCategory || 'Unknown Category',
+        customerConsent: reportData.customerConsent,
+        locationData: reportData.locationData
+      };
+
       const response = await apiClient.post<{
         success: boolean;
         message: string;
         reportId?: string;
-      }>(`/counterfeit-reports?${params}`, reportData);
+      }>(`/counterfeit-reports?${params}`, enhancedReportData);
+
+      // If successful, the backend has updated the verification log with proper device info
+      if (response.data.success) {
+        console.log('Counterfeit report submitted and verification log updated with device info');
+        
+        // Optionally refresh verification logs to show updated device info
+        try {
+          // Trigger a refresh of verification logs if you have a way to do it
+          // This could be through an event system or state management
+          this.refreshVerificationLogs?.();
+        } catch (refreshError) {
+          console.warn('Failed to refresh verification logs:', refreshError);
+        }
+      }
 
       return response.data;
     } catch (error) {
@@ -326,6 +404,15 @@ class AnalyticsService {
       throw this.handleError(error);
     }
   }
+  // Optional: Add a method to refresh verification logs
+  private refreshVerificationLogs?: () => void;
+
+  // Method to set the refresh callback
+  setVerificationLogsRefreshCallback(callback: () => void) {
+    this.refreshVerificationLogs = callback;
+  }
+
+
 
   async recordVerificationAttempt(verificationData: {
     serialNumber: string;
