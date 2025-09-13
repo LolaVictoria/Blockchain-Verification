@@ -60,6 +60,23 @@ export interface DeviceAnalytic {
   color?: string;
 }
 
+
+export interface ManufacturerVerificationLog {
+  serialNumber: string;
+  deviceName: string;
+  deviceCategory: string;
+  status: string;
+  date: string;
+  time: string;
+  confidence: number;
+  verificationMethod: string;
+  customerId?: string;
+  customerName: string;
+  customerEmail: string;
+  verificationId: string;
+  counterfeitId?: string;
+}
+
 export interface CustomerEngagement {
   date: string;
   activeCustomers: number;
@@ -239,6 +256,33 @@ class AnalyticsService {
     }
   }
   
+  
+
+
+
+async getManufacturerVerificationLogs(
+  timeRange: string = '30d',
+  limit: number
+): Promise<{
+  verificationLogs: ManufacturerVerificationLog[];
+}> {
+  try {
+    const params = new URLSearchParams({
+      manufacturerId: this.getManufacturerId(),
+      timeRange,
+      limit: limit.toString()
+    });
+
+    const response = await apiClient.get<{
+      verificationLogs: ManufacturerVerificationLog[];
+    }>(`/analytics/manufacturer/verification-logs?${params}`);
+
+    return response.data;
+  } catch (error) {
+    console.error('Failed to get manufacturer verification logs:', error);
+    throw this.handleError(error);
+  }
+}
    async getManufacturerDeviceAnalytics(timeRange: string): Promise<{
     deviceVerifications: DeviceAnalytic[];
   }> {
@@ -386,9 +430,6 @@ class AnalyticsService {
 
       // If successful, the backend has updated the verification log with proper device info
       if (response.data.success) {
-        console.log('Counterfeit report submitted and verification log updated with device info');
-        
-        // Optionally refresh verification logs to show updated device info
         try {
           // Trigger a refresh of verification logs if you have a way to do it
           // This could be through an event system or state management

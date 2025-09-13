@@ -3,7 +3,7 @@ import analyticsService  from '../utils/AnalyticsService';
 import type {
   VerificationTrend,
   kpis,
-  DeviceAnalytic,
+  // DeviceAnalytic,
   CustomerEngagement,
   CounterfeitLocation,
   CustomerVerificationHistory,
@@ -11,7 +11,8 @@ import type {
   VerificationLog,
   CounterfeitReport,
   CounterfeitReportData,
-  ManufacturerDeviceAnalytic
+  ManufacturerDeviceAnalytic,
+  ManufacturerVerificationLog  
 } from '../utils/AnalyticsService';
 
 interface ManufacturerAnalyticsState {
@@ -22,10 +23,11 @@ interface ManufacturerAnalyticsState {
   // Manufacturer data
   kpis: kpis | null;
   verificationTrends: VerificationTrend[];
-  deviceAnalytics: DeviceAnalytic[]; 
+  manufacturerDeviceAnalytics: ManufacturerDeviceAnalytic[]; 
+  deviceAnalytics: ManufacturerDeviceAnalytic[]; 
   customerEngagement: CustomerEngagement[];
   counterfeitLocations: CounterfeitLocation[];
-  manufacturerDeviceAnalytics: ManufacturerDeviceAnalytic[]; 
+  verificationLogs: ManufacturerVerificationLog[]; 
 }
 
 interface CustomerAnalyticsState {
@@ -49,7 +51,8 @@ const initialManufacturerState: ManufacturerAnalyticsState = {
   deviceAnalytics: [],
   customerEngagement: [],
   counterfeitLocations: [],
-  manufacturerDeviceAnalytics:[]
+  manufacturerDeviceAnalytics:[],
+  verificationLogs: []
 };
 
 const initialCustomerState: CustomerAnalyticsState = {
@@ -86,62 +89,64 @@ export const useManufacturerAnalytics = (timeRange: string = '30d') => {
     setState(prev => ({ ...prev, error }));
   }, []);
 
-  const loadManufacturerAnalytics = useCallback(async () => {
-  setLoading(true);
-  setError(null);
 
-  try {
-    const [
-      overviewData,
-      trendsData,
-      manufacturerDeviceData, 
-      engagementData,
-      counterfeitData,
-    ] = await Promise.allSettled([
-      analyticsService.getManufacturerOverview(),
-      analyticsService.getVerificationTrends(timeRange),
-      analyticsService.getManufacturerDeviceAnalytics(timeRange), // New one
-      analyticsService.getCustomerEngagement(timeRange),
-      analyticsService.getCounterfeitLocations(timeRange),
-    ]);
+  const loadManufacturerAnalytics = useCallback(async (logsLimit: number = 50) => {
+    setLoading(true);
+    setError(null);
 
-    setState(prev => ({
-      ...prev,
-      kpis: overviewData.status === 'fulfilled' ? overviewData.value.kpis : null,
-      verificationTrends: trendsData.status === 'fulfilled' ? trendsData.value.verificationTrends : [],
-      // deviceAnalytics: deviceData.status === 'fulfilled' ? 
-      //   generateDeviceColors(deviceData.value.deviceVerifications || []) : [],
-      manufacturerDeviceAnalytics: manufacturerDeviceData.status === 'fulfilled' ? 
-        generateDeviceColors(manufacturerDeviceData.value.deviceVerifications || []) : [],
-      customerEngagement: engagementData.status === 'fulfilled' ? engagementData.value.customerEngagement : [],
-      counterfeitLocations: counterfeitData.status === 'fulfilled' ? counterfeitData.value.counterfeitLocations : [],
-      lastUpdated: new Date(),
-    }));
+    try {
+      const [
+        overviewData,
+        trendsData,
+        deviceData,  // Fixed: Single device analytics call
+        engagementData,
+        counterfeitData,
+        logsData,  // Add verification logs
+      ] = await Promise.allSettled([
+        analyticsService.getManufacturerOverview(timeRange),
+        analyticsService.getVerificationTrends(timeRange),
+        analyticsService.getManufacturerDeviceAnalytics(timeRange),
+        analyticsService.getCustomerEngagement(timeRange),
+        analyticsService.getCounterfeitLocations(timeRange),
+        analyticsService.getManufacturerVerificationLogs(timeRange, logsLimit),  // Add this
+      ]);
 
-    // Log any failures for debugging
-    const failures = [
-      overviewData, trendsData, manufacturerDeviceData, engagementData, counterfeitData
-    ].filter(result => result.status === 'rejected');
-    
-    if (failures.length > 0) {
-      console.warn('Some manufacturer analytics requests failed:', 
-        failures.map(f => f.status === 'rejected' ? f.reason : null));
+      setState(prev => ({
+        ...prev,
+        kpis: overviewData.status === 'fulfilled' ? overviewData.value.kpis : null,
+        verificationTrends: trendsData.status === 'fulfilled' ? trendsData.value.verificationTrends : [],
+        deviceAnalytics: deviceData.status === 'fulfilled' ? 
+          generateDeviceColors(deviceData.value.deviceVerifications || []) : [],
+        customerEngagement: engagementData.status === 'fulfilled' ? engagementData.value.customerEngagement : [],
+        counterfeitLocations: counterfeitData.status === 'fulfilled' ? counterfeitData.value.counterfeitLocations : [],
+        verificationLogs: logsData.status === 'fulfilled' ? logsData.value.verificationLogs : [],  // Add this
+        lastUpdated: new Date(),
+      }));
+
+      // Log any failures for debugging
+      const failures = [
+        overviewData, trendsData, deviceData, engagementData, counterfeitData, logsData
+      ].filter(result => result.status === 'rejected');
+      
+      if (failures.length > 0) {
+        console.warn('Some manufacturer analytics requests failed:', 
+          failures.map(f => f.status === 'rejected' ? f.reason : null));
+      }
+
+    } catch (error) {
+      console.error('Error loading manufacturer analytics:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load analytics');
+    } finally {
+      setLoading(false);
     }
+  }, [timeRange, setLoading, setError]);
 
-  } catch (error) {
-    console.error('Error loading manufacturer analytics:', error);
-    setError(error instanceof Error ? error.message : 'Failed to load analytics');
-  } finally {
-    setLoading(false);
-  }
-}, [timeRange, setLoading, setError]);
-
-  
   useEffect(() => {
     loadManufacturerAnalytics();
   }, [loadManufacturerAnalytics]);
 
-  return {
+
+   return {
     // State
     loading: state.loading,
     error: state.error,
@@ -150,16 +155,17 @@ export const useManufacturerAnalytics = (timeRange: string = '30d') => {
     // Data
     kpis: state.kpis,
     verificationTrends: state.verificationTrends,
-    deviceAnalytics: state.deviceAnalytics, 
-    manufacturerDeviceAnalytics: state.manufacturerDeviceAnalytics, 
+    deviceAnalytics: state.deviceAnalytics,  // Fixed: consistent naming
     customerEngagement: state.customerEngagement,
     counterfeitLocations: state.counterfeitLocations,
+    verificationLogs: state.verificationLogs,  // Add verification logs
     
     // Actions
     loadManufacturerAnalytics,
     setError,
     clearError: () => setError(null),
   };
+
 };
 
 export const useCustomerAnalytics = (timeRange: string = '30d') => {

@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area, ComposedChart } from 'recharts';
-import { TrendingUp, Shield, Clock, Database, CheckCircle, AlertTriangle, MapPin, Users, Activity } from 'lucide-react';
+import { TrendingUp, Shield, Clock, Database, CheckCircle, AlertTriangle, MapPin, Users, Activity, FileText } from 'lucide-react';
 import MetricCard from "./metricCard";
 import { useManufacturerAnalytics }  from '../../hooks/useAnalytics';
 import type { 
   VerificationTrend, 
   kpis, 
-  DeviceAnalytic, 
+  ManufacturerDeviceAnalytic,  
   CustomerEngagement, 
-  CounterfeitLocation 
+  CounterfeitLocation,
+  ManufacturerVerificationLog  
 } from '../../utils/AnalyticsService';
-import { ManufacturerDeviceAnalyticsComponent } from './manufacturer/manufacturerDeviceBreakdownChart';
-
 // Time Range Filter Component
 const TimeRangeFilter = ({ 
   timeRange, 
@@ -148,6 +147,112 @@ const DetailedKPIBreakdown = ({ kpis }: { kpis: kpis }) => {
   );
 };
 
+
+// Add Manufacturer Verification Logs Component
+const ManufacturerVerificationLogsTable = ({ 
+  data 
+}: { 
+  data: ManufacturerVerificationLog[] 
+}) => {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        No verification logs available
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Serial Number
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Device
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Customer
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Date
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Response Time
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.slice(0, 20).map((log, index) => (
+            <tr key={index} className="hover:bg-gray-50">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                {log.serialNumber}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{log.deviceName}</div>
+                  <div className="text-sm text-gray-500">{log.deviceCategory}</div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{log.customerName}</div>
+                  <div className="text-sm text-gray-500">{log.customerEmail}</div>
+                </div>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                  log.status === 'Authentic' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {log.status}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {log.date}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                {log.time}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Updated Device Analytics Chart Component
+const DeviceAnalyticsChart = ({ data }: { data: ManufacturerDeviceAnalytic[] }) => {
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        No device data available
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data.slice(0, 6)}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+        <Bar dataKey="authentic" fill="#10B981" name="Authentic" />
+        <Bar dataKey="counterfeit" fill="#EF4444" name="Counterfeit" />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
 // Verification Trends Chart Component
 const VerificationTrendsChart = ({ data }: { data: VerificationTrend[] }) => {
   if (data.length === 0) {
@@ -189,30 +294,6 @@ const VerificationTrendsChart = ({ data }: { data: VerificationTrend[] }) => {
   );
 };
 
-// Device Analytics Chart Component
-const DeviceAnalyticsChart = ({ data }: { data: DeviceAnalytic[] }) => {
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        No device data available
-      </div>
-    );
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data.slice(0, 6)}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-        <YAxis />
-        <Tooltip />
-        <Legend />
-        <Bar dataKey="authentic" fill="#10B981" name="Authentic" />
-        <Bar dataKey="counterfeit" fill="#EF4444" name="Counterfeit" />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-};
 
 // Customer Engagement Chart Component
 const CustomerEngagementChart = ({ data }: { data: CustomerEngagement[] }) => {
@@ -385,11 +466,11 @@ const ManufacturerAnalyticsDashboard = () => {
     error,
     kpis,
     verificationTrends,
-    deviceAnalytics,
+    deviceAnalytics,  
     customerEngagement,
     counterfeitLocations,
+    verificationLogs,  // Add verification logs
     loadManufacturerAnalytics,
-    manufacturerDeviceAnalytics,
     setError
   } = useManufacturerAnalytics(timeRange);
 
@@ -400,7 +481,7 @@ const ManufacturerAnalyticsDashboard = () => {
   // Filter device analytics based on selected type
   const filteredDeviceAnalytics = selectedDeviceType === 'all' 
     ? deviceAnalytics 
-    : deviceAnalytics.filter((device: { name: string; }) => device.name === selectedDeviceType);
+    : deviceAnalytics.filter((device) => device.name === selectedDeviceType);
 
   // Loading state
   if (loading) {
@@ -543,14 +624,16 @@ const ManufacturerAnalyticsDashboard = () => {
           )}
         </div>
 
-        
-    <ManufacturerDeviceAnalyticsComponent 
-      data={manufacturerDeviceAnalytics}
-      loading={loading}
-      error={error}
-    />
+        {/* Verification Logs Table */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <h3 className="text-xl font-semibold mb-4">
+            <FileText className="inline h-5 w-5 mr-2" />
+            Recent Verification Logs
+          </h3>
+          <ManufacturerVerificationLogsTable data={verificationLogs} />
+        </div>
 
-    {/* Key Insights & Action Items */}
+        {/* Key Insights & Action Items */}
         {kpis && (
           <InsightsSection 
             kpis={kpis} 

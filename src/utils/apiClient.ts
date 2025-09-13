@@ -172,7 +172,7 @@ const apiClient = {
 
   // Utility methods
   setBaseURL: (url: string) => {
-    axiosInstance.defaults.baseURL = url;
+    axiosInstance.defaults.baseURL = url
   },
 
   setTimeout: (timeout: number) => {

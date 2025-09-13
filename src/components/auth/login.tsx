@@ -135,9 +135,9 @@ useEffect(() => {
               </button>
               </Link>
             </p>
-            <p className="text-xs text-slate-500 mt-2">
+            {/* <p className="text-xs text-slate-500 mt-2">
               Demo credentials: test@example.com / password
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

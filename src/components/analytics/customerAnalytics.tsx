@@ -45,7 +45,7 @@ const CustomerAnalyticsDashboard = () => {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 ">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -87,7 +87,7 @@ const CustomerAnalyticsDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 ">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -100,13 +100,15 @@ const CustomerAnalyticsDashboard = () => {
         </div>
 
         {/* Time Range Filter */}
-        <div className="flex space-x-2 mb-6">
-          <label className="text-sm font-medium text-gray-700 self-center">Time Range:</label>
+        <div className=" mb-6">
+          <label className="text-sm font-medium text-gray-700 text-center ">Time Range:</label>
+          <div className='flex flex-col lg:flex-row space-x-2'>
+
           {(['7d', '30d', '90d', '1y'] as const).map((range) => (
             <button
-              key={range}
+            key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-40 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 timeRange === range
                   ? 'bg-blue-600 text-white'
                   : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
@@ -116,7 +118,9 @@ const CustomerAnalyticsDashboard = () => {
                range === '30d' ? 'Last 30 Days' : 
                range === '90d' ? 'Last 90 Days' : 'Last Year'}
             </button>
+
           ))}
+          </div>
         </div>
 
        

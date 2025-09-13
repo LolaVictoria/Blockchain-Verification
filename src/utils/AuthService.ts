@@ -79,26 +79,33 @@ export class AuthService {
   // Initialize from localStorage on app startup
   private initializeFromStorage(): void {
     try {
+      // Check localStorage availability first
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        console.warn('⚠️ localStorage not available (SSR or private browsing?)');
+        return;
+      }
+
       const token = this.getToken();
-      if (token && this.isTokenValid(token)) {
-        // Token exists and is valid, set authenticated state
-        this.appState.isAuthenticated = true;
-        
-        // Try to get user from localStorage
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            this.appState.user = JSON.parse(storedUser);
-          } catch (e) {
-            console.warn('Failed to parse stored user data');
-            localStorage.removeItem('user');
+      if (token) {
+        if (this.isTokenValid(token)) {
+          this.appState.isAuthenticated = true;
+          
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              this.appState.user = JSON.parse(storedUser);
+            } catch (e) {
+              console.warn('❌ Failed to parse stored user data');
+              localStorage.removeItem('user');
+            }
           }
+        } else {
+          this.clearSession();
         }
       } else {
         this.clearSession();
       }
     } catch (error) {
-      console.error('Error initializing from storage:', error);
       this.clearSession();
     }
   }
@@ -106,10 +113,35 @@ export class AuthService {
   // Check if token is valid
   private isTokenValid(token: string): boolean {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1])) as TokenPayload;
+      if (!token) {
+        console.error('❌ Token is null or undefined');
+        return false;
+      }
+      
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        console.error('❌ Token format invalid - not JWT format');
+        return false;
+      }
+      
+      const payload = JSON.parse(atob(parts[1])) as TokenPayload;
       const now = Date.now() / 1000;
-      return payload.exp > now;
+      const isValid = payload.exp > now;
+      
+      if (!isValid) {
+        console.error('❌ Token expired:', {
+          exp: new Date(payload.exp * 1000).toISOString(),
+          now: new Date(now * 1000).toISOString(),
+          expired_minutes_ago: Math.round((now - payload.exp) / 60)
+        });
+      } else {
+        const timeLeft = Math.round((payload.exp - now) / 60);
+        localStorage.setItem('Time_Left', timeLeft.toString())
+      }
+      
+      return isValid;
     } catch (error) {
+      console.error('❌ Token validation error:', error);
       return false;
     }
   }
@@ -145,47 +177,53 @@ export class AuthService {
 }
 
   // Get current authentication status
-checkAuthStatus(): boolean {
-  const token = this.getToken();
-  if (token && this.isTokenValid(token)) {
+ checkAuthStatus(): boolean {
+    const token = this.getToken();
+    
+    if (!token) {
+      this.updateState({ isAuthenticated: false });
+      return false;
+    }
+
+    if (!this.isTokenValid(token)) {
+      this.clearSession();
+      return false;
+    }
+
+    // Ensure user data is loaded
     if (!this.appState.user || Object.keys(this.appState.user).length === 0) {
-      // First try to get user from localStorage (more complete data)
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
           this.appState.user = userData;
-          this.updateState({ isAuthenticated: true });
-          return true;
         } catch (e) {
-          console.warn('Failed to parse stored user data, falling back to token');
+          console.warn('❌ Failed to parse stored user data');
+          localStorage.removeItem('user');
         }
       }
-      
-      // Fallback to token data only if localStorage fails
-      try {
-        const userFromToken = this.getUserFromToken(token);
-        if (userFromToken) {
-          this.appState.user = userFromToken;
-          this.updateState({ isAuthenticated: true });
-          return true;
+
+      // Fallback to token extraction
+      if (!this.appState.user || Object.keys(this.appState.user).length === 0) {
+        try {
+          const userFromToken = this.getUserFromToken(token);
+          if (userFromToken) {
+            this.appState.user = userFromToken;
+          }
+        } catch (e) {
+          console.error('❌ Failed to extract user from token:', e);
+          this.clearSession();
+          return false;
         }
-      } catch (e) {
-        console.error('Failed to get user from token:', e);
-        this.clearSession();
-        return false;
       }
     }
+    
     this.updateState({ isAuthenticated: true });
     return true;
-  } else {
-    this.clearSession();
-    return false;
   }
-}
 
   // LOGIN 
-  async login(email: string, password: string): Promise<boolean> {
+async login(email: string, password: string): Promise<boolean> {
     this.updateState({ loading: true, error: null });
 
     try {
@@ -198,36 +236,130 @@ checkAuthStatus(): boolean {
         password
       });
 
-      if (response.status === 200 && response.data.token) {
-        // Store tokens
-        localStorage.setItem('authToken', response.data.token);
-        if (response.data.refresh_token) {
-          localStorage.setItem('refreshToken', response.data.refresh_token);
-        }
-        // Store user data
-        const userData = response.data.user;
-        localStorage.setItem('user', JSON.stringify(userData));
-        // console.log(userData)
-        localStorage.setItem('user_role', userData.role);
 
-        // Update state
-        this.appState.user = userData; 
-        this.updateState({
-          user: userData,
-          isAuthenticated: true,
-          loading: false,
-          error: null
-        });
-        return true;
+      if (response.status === 200 && response.data.success) {
+        const { data: loginData } = response.data;
+        
+        if (loginData.token) {
+          
+          // Store tokens with error handling
+          try {
+            localStorage.setItem('authToken', loginData.token);
+            
+            if (loginData.refresh_token) {
+              localStorage.setItem('refreshToken', loginData.refresh_token);
+            }
+          } catch (error) {
+            throw new Error('Failed to store authentication data');
+          }
+
+          // Verify token was stored
+          const storedToken = localStorage.getItem('authToken');
+          if (!storedToken) {
+            console.error('❌ Token not found after storage attempt!');
+            throw new Error('Failed to persist authentication token');
+          }
+          
+
+          let userData = loginData.user;
+          
+          // Enhanced user data handling
+          if (!userData.id || !userData.primary_email) {
+            try {
+              const tokenUser = this.getUserFromToken(loginData.token);
+              userData = { ...tokenUser, ...userData };
+            } catch (error) {
+              console.warn('⚠️ Could not extract user from token:', error);
+            }
+          }
+
+          // Store user data with error handling
+          try {
+            localStorage.setItem('user', JSON.stringify(userData));
+            localStorage.setItem('user_role', userData.role);
+          } catch (error) {
+            console.error('❌ Failed to store user data:', error);
+          }
+
+          // Update state
+          this.appState.user = userData;
+          this.updateState({
+            user: userData,
+            isAuthenticated: true,
+            loading: false,
+            error: null
+          });
+
+          // Background profile fetch (non-blocking)
+          this.fetchCompleteProfile(userData.role)
+            .then(completeUser => {
+              localStorage.setItem('user', JSON.stringify(completeUser));
+              this.updateState({ user: completeUser });
+            })
+            .catch(error => {
+              console.warn('⚠️ Could not fetch complete profile (non-critical):', error);
+            });
+          
+          return true;
+        } else {
+          throw new Error('No authentication token received from server');
+        }
       } else {
-        throw new Error(response.data.error || 'Login failed');
+        throw new Error(response.data.error || response.data.message || 'Login failed');
       }
     } catch (error: any) {
-      const errorMessage = this.handleApiError(error, 'Login failed');
+      console.error('❌ Login error:', error);
+      
+      let errorMessage = 'Login failed';
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          if (typeof errorData.error === 'string') {
+            errorMessage = errorData.error;
+          } else if (errorData.error.errors && Array.isArray(errorData.error.errors)) {
+            errorMessage = errorData.error.errors.join(', ');
+          }
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       this.updateState({ loading: false, error: errorMessage });
       throw new Error(errorMessage);
     }
   }
+
+// Helper method to fetch complete profile after login
+private async fetchCompleteProfile(userRole: string): Promise<User> {
+  try {
+    const token = this.getToken();
+    if (!token) {
+      throw new Error('No token available');
+    }
+
+    // Determine endpoint based on role
+    const endpoint = userRole === 'manufacturer' ? '/auth/manufacturer/profile' : '/auth/customer/profile';
+    
+    const response = await apiClient.get<ProfileResponse>(endpoint, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.status === 200 && response.data?.user) {
+      return response.data.user;
+    } else {
+      throw new Error('Failed to fetch profile');
+    }
+  } catch (error: any) {
+    console.error('Profile fetch error:', error);
+    throw error;
+  }
+}
 
   // SIGNUP
   async signup(
@@ -294,8 +426,8 @@ checkAuthStatus(): boolean {
 
       // Determine endpoint based on user role
       const userRole = this.appState.user?.role || 'customer';
-      const endpoint = userRole === 'manufacturer' ? '/manufacturer/profile' : '/customer/profile';
-
+      const endpoint = userRole === 'manufacturer' ? '/auth/manufacturer/profile' : '/auth/customer/profile';
+      alert('yes')
       const response = await apiClient.get<ProfileResponse>(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -349,7 +481,7 @@ checkAuthStatus(): boolean {
 
       // Determine endpoint based on user role
       const userRole = this.appState.user?.role || 'manufacturer';
-      const endpoint = userRole === 'manufacturer' ? '/manufacturer/profile' : '/profile';
+      const endpoint = userRole === 'manufacturer' ? '/auth/manufacturer/profile' : '/auth/customer/profile';
 
       // Convert legacy format to new format if needed
       const requestData = this.normalizeUpdateData(updateData);
@@ -522,7 +654,7 @@ checkAuthStatus(): boolean {
   async quickUpdate(field: string, value: any): Promise<User> {
     try {
       // Try the quick update endpoint first
-      const response = await apiClient.post('/manufacturer/profile/quick-update', {
+      const response = await apiClient.post('/auth/manufacturer/profile/quick-update', {
         field,
         value
       }, {
@@ -586,6 +718,7 @@ checkAuthStatus(): boolean {
 
   // Clear all session data
   private clearSession(): void {
+    
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
@@ -602,7 +735,20 @@ checkAuthStatus(): boolean {
 
   // Helper method to get token
   getToken(): string | null {
-    return localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken');
+    
+    if (!token) {
+      console.warn('⚠️ No token found in localStorage');
+      // Check if we're in a browser environment where localStorage might be disabled
+      try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+      } catch (e) {
+        console.error('❌ localStorage is not available:', e);
+      }
+    }
+    
+    return token;
   }
 
   // Error handling

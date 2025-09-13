@@ -192,12 +192,16 @@ export interface ApiResponse<T = any> {
 }
 
 export interface LoginResponse {
-  token: string;
-  refresh_token: string;
-  user: User;
-  authenticated: boolean;
-  error?: string
-  message?: string;
+  data: {
+    token: string;
+    expires_at: string;
+    user: User;
+    refresh_token?: string;
+  };
+  message: string;
+  success: boolean;
+  timestamp: string;
+  error?: string;
 }
 
 export interface SignupResponse {

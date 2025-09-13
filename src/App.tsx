@@ -1,39 +1,47 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from '../context/AuthContext';
-import HomePage from './pages/homePage';
-import HowItWorksPage from './pages/howItWorks';
-import AboutPage from './pages/aboutPage';
-import ContactPage from './pages/contactPage';
-import LoginScreen from './components/auth/login';
-import SignupScreen from './components/auth/signup';
-import Dashboard from './pages/dashboard';
-import NotFound from './pages/NotFound';
-import VerifyPage from './pages/verify';
-import { ProductGrid } from './components/manufacturerDashboard/productGrid';
-// import AdminDashboard from './pages/admin';
-// import ManufacturerDashboard from './pages/ManufacturerDashboard';
+
+// Lazy load all page components
+const HomePage = lazy(() => import('./pages/homePage'));
+const HowItWorksPage = lazy(() => import('./pages/howItWorks'));
+const AboutPage = lazy(() => import('./pages/aboutPage'));
+const ContactPage = lazy(() => import('./pages/contactPage'));
+const LoginScreen = lazy(() => import('./components/auth/login'));
+const SignupScreen = lazy(() => import('./components/auth/signup'));
+const Dashboard = lazy(() => import('./pages/dashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const VerifyPage = lazy(() => import('./pages/verify'));
+const ProductGrid = lazy(() => import('./components/manufacturerDashboard/productGrid').then(module => ({ default: module.ProductGrid })));
+
+
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+    <span className="ml-3 text-gray-600">Loading...</span>
+  </div>
+);
 
 const App: React.FC = () => {
-  
-
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/login" element={<LoginScreen />} />
-          <Route path="/verify" element={<VerifyPage />} />
-          <Route path="/signup" element={<SignupScreen/>} />
-          <Route path="/dashboard/:role/:id/products" element={<ProductGrid/>} />
-          <Route path="/dashboard/:role/:id/" element={<Dashboard />} />
-          {/* <Route path="/admin-dashboard" element={<AdminDashboard />} />
-          <Route path="/manufacturer-dashboard" element={<ManufacturerDashboard />} /> */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/login" element={<LoginScreen />} />
+            <Route path="/verify" element={<VerifyPage />} />
+            <Route path="/signup" element={<SignupScreen />} />
+            <Route path="/dashboard/:role/:id/products" element={<ProductGrid />} />
+            <Route path="/dashboard/:role/:id/" element={<Dashboard />} />
+            {/* <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/manufacturer-dashboard" element={<ManufacturerDashboard />} /> */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );

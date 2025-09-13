@@ -7,7 +7,7 @@ interface Props {
 
 export const CounterfeitReportsTable = ({ reports }: Props) => {
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 mb-8 overflow-y-scroll">
+    <div className="bg-white rounded-xl shadow-lg p-6 mb-8 overflow-x-scroll">
       <h3 className="text-xl font-semibold mb-4">Counterfeit Reports</h3>
       {reports.length > 0 ? (
         <div className="overflow-x-auto">

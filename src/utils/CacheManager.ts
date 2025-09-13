@@ -33,7 +33,7 @@ export class CacheManager {
       dataKey: 'stats'
     },
     profile: {
-      endpoint: '/manufacturer/profile',
+      endpoint: '/auth/manufacturer/profile',
       cacheKey: 'profileData',
       dataKey: 'user'
     }
